@@ -160,12 +160,15 @@ class State:
         return 0
 
 class SearchNode:
-    def __init__(self, state, parent, cost):
+    def __init__(self, state, parent, cost, direct):
         self.state = state
         self.parent = parent
         self.cost = cost
         if (parent != NULL):
            self.cost += parent.cost
+           self.direction = str(direct)[10]
+           if (cost == 1):
+               self.direction = self.direction.lower()
 
     def priority_value(self):
         return self.state.heuristic() + self.cost
@@ -175,7 +178,7 @@ class SearchNode:
         for direct in Direction:
             newState = self.state.neighbor(direct.value)
             if (newState != NULL):
-                result.append(SearchNode(newState, self, self.state.actionCost(direct.value)))
+                result.append(SearchNode(newState, self, self.state.actionCost(direct.value), direct))
         return result
 
     def printTree(self):
@@ -183,6 +186,11 @@ class SearchNode:
             self.parent.printTree()
         print(self.state)
         print("cost: ", self.cost)
+    def path(self):
+        if (self.parent == NULL):
+            return ""
+        return self.parent.path() + self.direction
+            
 
 class PrioritizedItem:
     def __init__(self, priority, item):
@@ -197,9 +205,10 @@ class PrioritizedItem:
 @profile
 class Solver:
     def __init__(self, state):
-        self.rootNode = SearchNode(state, NULL, 0)
+        self.rootNode = SearchNode(state, NULL, 0, NULL)
         self.reached = {}
         self.reached[str(state)] = 0
+        self.node_number = 0
 
         self.priorityQueue = PriorityQueue()
         self.priorityQueue.put(PrioritizedItem(self.rootNode.priority_value(), self.rootNode))
@@ -209,7 +218,10 @@ class Solver:
             top = self.priorityQueue.get().getItem()
             if (top.state.isGoal()):
                 top.printTree()
+                print(top.path())
+                print("Node: ", self.node_number)
                 return
+            self.node_number += 1
             for child in top.children():
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
