@@ -203,7 +203,7 @@ class PrioritizedItem:
         return self.item
 
 @profile
-class Solver:
+class SolverBFS:
     def __init__(self, state):
         self.rootNode = SearchNode(state, NULL, 0, NULL)
         self.reached = {}
@@ -214,7 +214,31 @@ class Solver:
         self.priorityQueue.put(PrioritizedItem(self.rootNode.priority_value(), self.rootNode))
 
     def expand(self):
-        while (self.priorityQueue):
+        while (not self.priorityQueue.empty()):
+            top = self.priorityQueue.get().getItem()
+            self.node_number += 1
+            for child in top.children():
+                if (child.state.isGoal()):
+                    child.printTree()
+                    print(child.path())
+                    print("Node: ", self.node_number)
+                    return
+                if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
+                    self.reached[str(child.state)] = child.cost
+                    self.priorityQueue.put(PrioritizedItem(child.priority_value(), child))
+        print("FAILURE")
+
+class SolverUCS:
+    def __init__(self, state):
+        self.rootNode = SearchNode(state, NULL, 0, NULL)
+        self.reached = {}
+        self.reached[str(state)] = 0
+        self.node_number = 0
+        self.priorityQueue = PriorityQueue()
+        self.priorityQueue.put(PrioritizedItem(self.rootNode.cost, self.rootNode))
+
+    def expand(self):
+        while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
             if (top.state.isGoal()):
                 top.printTree()
@@ -225,11 +249,11 @@ class Solver:
             for child in top.children():
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
-                    self.priorityQueue.put(PrioritizedItem(child.priority_value(), child))
+                    self.priorityQueue.put(PrioritizedItem(child.cost, child))
         print("FAILURE")
 
 
 for fileName in fileNames:
-    solver = Solver(State(fileName, inputAres[fileName], inputStone[fileName]))
+    solver = SolverBFS(State(fileName, inputAres[fileName], inputStone[fileName]))
     solver.expand()
         
