@@ -73,8 +73,8 @@ wordMap = {}
 
 test_dir = '../TestCases/'
 for x in os.listdir(test_dir):
-    if x.endswith("2.txt"):
-        content = open(test_dir + x, 'r').read()
+    if x.endswith("3.txt"):
+        content = open(test_dir + x, 'r', encoding='utf-16-le').read()
         if content.startswith('\ufeff'):
             content = content[1:]
         fileName = x[:-4]
@@ -119,12 +119,13 @@ class Direction(Enum):
     Down = Vector([1, 0])
     Left = Vector([0, -1])
     Right = Vector([0, 1])
-    
+
 
 class State:
     def __init__(self, name, ares, stones):
         self.ares = ares
         self.stones = dict(sorted(stones.copy().items()))
+        self.dist = {}
         self.name = name
 
     def __str__(self):
@@ -136,47 +137,48 @@ class State:
     
     def isGoal(self):
         for switch in inputSwitch[self.name]:
-            if (switch not in self.stones):
+            if (switch not in self.stones):  
                 return False
         return True
     
     def neighbors(self):
         result = []
-        for direct in Direction:
-            newState = self.neighbor(direct.value)
-            if (newState != NULL):
-                result.append(newState)
+        for stone in self.stones:
+            for direct in Direction:
+                newState = self.neighbor(stone, direct.value)
+                if (newState != NULL):
+                    result.append(newState)
         return result
 
-    def neighbor(self, enum):
-        if ((self.ares + enum) in inputWall[self.name]):
+    def neighbor(self, stone, enum):
+        if ((stone + enum) in inputWall[self.name] or (stone - enum) in inputWall[self.name] or (stone + enum) in self.stones or (stone + enum) in self.stones or (stone - enum) not in self.dist):
             return NULL
 
-        newStateStones = self.stones.copy()
-        if ((self.ares + enum) not in self.stones):
-            return State(self.name, self.ares + enum, newStateStones)
+        newStateStone = self.stones.copy()
+        newStateStone.pop(stone)
+        newStateStone[stone + enum] = self.stones[stone]
 
-        if ((self.ares + 2*enum) in self.stones or (self.ares + 2*enum) in inputWall[self.name]):
-            return NULL
+        newState = State(self.name, stone, newStateStone)
 
-        newStateStones.pop(self.ares + enum)
-        
-        newStateStones[self.ares + 2*enum] = self.stones[self.ares + enum]
+        return newState
 
-        return State(self.name, self.ares + enum, newStateStones)
+    def playerNeighbors(self):
+        queue = PriorityQueue()
+        self.dist[self.ares] = 0
+        queue.put(PrioritizedItem(0, self.ares))
+        while (not queue.empty()):
+            top = queue.get()
+            for direct in Direction:
+                newSpace = top.getItem() + direct.value
+                if (newSpace in self.stones or newSpace in inputWall[self.name]):
+                    continue
+                if (newSpace not in self.dist or self.dist[newSpace] > top.getPriority() + 1):
+                   #     print(queue.qsize(), newSpace)
+                    self.dist[newSpace] = top.getPriority() + 1
+                    queue.put(PrioritizedItem(top.getPriority() + 1, newSpace))
 
-    def reverseNeighbor(self, enum):
-        newStateStones = self.stones.copy()
-        if (self.ares + enum in self.stones):
-            newStateStones.pop(self.ares + enum)
-            newStateStones[self.ares] = self.stones[self.ares + enum]
-
-        return State(self.name, self.ares - enum, newStateStones)
-
-    def actionCost(self, enum):
-        if ((self.ares + enum) in self.stones and (self.ares + 2*enum) not in self.stones and (self.ares + 2*enum) not in inputWall[self.name]):
-            return self.stones[self.ares + enum] + 1
-        return 1
+    def actionCost(self, stone, enum):
+        return self.dist[stone - enum] + self.stones[stone] + 1
 
     def heuristic(self):
         return 0
@@ -184,44 +186,35 @@ class State:
 class SearchNode:
     def __init__(self, state, parent, cost, direct):
         self.state = state
+        self.parent = parent
         self.cost = cost
-        self.path = ''
         if (parent != NULL):
            self.cost += parent.cost
-           direction = str(direct)[10]
+           self.direction = str(direct)[10]
            if (cost == 1):
-               direction = direction.lower()
-           self.path = parent.path + direction
+               self.direction = self.direction.lower()
 
     def priority_value(self):
         return self.state.heuristic() + self.cost
 
     def children(self):
         result = []
-        for direct in Direction:
-            newState = self.state.neighbor(direct.value)
-            if (newState != NULL):
-                result.append(SearchNode(newState, self, self.state.actionCost(direct.value), direct))
+        for stone in self.state.stones:
+            for direct in Direction:
+                newState = self.state.neighbor(stone, direct.value)
+                if (newState != NULL):
+                    result.append(SearchNode(newState, self, self.state.actionCost(stone, direct.value), direct))
         return result
 
     def printTree(self):
-        start = len(self.path) - 1
-        parent = self.state
-        while (start >= 0):
-            print(str(parent))
-            parent = self.getParentState(parent, start)
-            start -= 1
+        if (self.parent != NULL):
+            self.parent.printTree()
+        print(self.state)
         print("cost: ", self.cost)
-
-    def getParentState(self, parent, depth):
-        if ((c:=self.path[depth].lower()) == 'u'):
-            return parent.reverseNeighbor(Direction.Up.value)
-        elif (c == 'd'):
-            return parent.reverseNeighbor(Direction.Down.value)
-        elif (c == 'l'):
-            return parent.reverseNeighbor(Direction.Left.value)
-        elif (c == 'r'):
-            return parent.reverseNeighbor(Direction.Right.value)
+    def path(self):
+        if (self.parent == NULL):
+            return ""
+        return self.parent.path() + self.direction
             
 
 class PrioritizedItem:
@@ -233,6 +226,8 @@ class PrioritizedItem:
         return self.priority < other.priority
     def getItem(self):
         return self.item
+    def getPriority(self):
+        return self.priority
 
 @profile
 class SolverBFS:
@@ -246,18 +241,18 @@ class SolverBFS:
         self.priorityQueue.put(PrioritizedItem(self.rootNode.priority_value(), self.rootNode))
 
     def expand(self):
-        size = 0
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
-            size = max(size, self.priorityQueue.qsize())
             print ("\033[A                             \033[A")
             self.node_number += 1
-            print(self.node_number, size)
+            print(self.node_number)
+            top.state.playerNeighbors()
+
             for child in top.children():
                 if (child.state.isGoal()):
                     child.printTree()
-                    print(child.path)
-                    print("Node: ", self.node_number, size)
+                    print(child.path())
+                    print("Node: ", self.node_number)
                     return
                 if (str(child.state) not in self.reached or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
@@ -278,12 +273,10 @@ class SolverUCS:
             top = self.priorityQueue.get().getItem()
             if (top.state.isGoal()):
                 top.printTree()
-                print(top.path)
+                print(top.path())
                 print("Node: ", self.node_number)
                 return
-            print ("\033[A                             \033[A")
             self.node_number += 1
-            print(self.node_number)
             for child in top.children():
                 if (str(child.state) not in self.reached or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
@@ -292,6 +285,6 @@ class SolverUCS:
 
 
 for fileName in fileNames:
-    solver = SolverUCS(State(fileName, inputAres[fileName], inputStone[fileName]))
+    solver = SolverBFS(State(fileName, inputAres[fileName], inputStone[fileName]))
     solver.expand()
         
