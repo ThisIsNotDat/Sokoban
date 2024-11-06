@@ -4,8 +4,11 @@ from enum import Enum
 import math
 from queue import PriorityQueue
 from queue import Queue
-# from memory_profiler import profile
+from typing import Tuple
+import tracemalloc
+#from memory_profiler import profile
 
+tracemalloc.start()
 
 class Vector:
     def __init__(self, *components):
@@ -98,7 +101,7 @@ class Direction(Enum):
 
 
 test_dir = './TestCases/'
-test_list = ['input_4.txt']
+test_list = ['demo.txt']
 for x in sorted(os.listdir(test_dir)):
     if x.endswith(".txt") and x in test_list:
         content = open(test_dir + x, 'r').read()
@@ -490,6 +493,7 @@ class SolverBFS:
                     # child.printTree()
                     print(child.path())
                     print("Node: ", self.node_number)
+                    print("Cost: ", child.cost)
                     return
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
@@ -512,9 +516,10 @@ class SolverUCS:
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
             if (top.state.isGoal()):
-                top.printTree()
+                #top.printTree()
                 print(top.path())
                 print("Node: ", self.node_number)
+                print("Cost: ", top.cost)
                 return
             self.node_number += 1
             for child in top.children():
@@ -525,7 +530,17 @@ class SolverUCS:
         print("FAILURE")
 
 
+import time
+time_start = time.time()
 for fileName in fileNames:
-    solver = SolverBFS(
-        State(fileName, inputAres[fileName], inputStone[fileName]))
+    solver = SolverUCS(State(fileName, inputAres[fileName], inputStone[fileName]))
     solver.expand()
+time_end = time.time()
+print('time cost', time_end-time_start)
+current, peak = tracemalloc.get_traced_memory()
+
+print(f"Current memory usage: {current / 10**6:.2f} MB")
+print(f"Peak memory usage: {peak / 10**6:.2f} MB")
+
+# Stop tracing memory allocation
+tracemalloc.stop()
