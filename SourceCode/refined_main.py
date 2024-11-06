@@ -57,6 +57,105 @@ class Vector:
     def __getitem__(self, index):
         return self.components[index]
 
+class Hungarian:
+    INF = float('inf')
+
+    def __init__(self, n):
+        self.n = n
+        self.c = [[self.INF] * n for _ in range(n)]
+        self.fx = [0] * n
+        self.fy = [0] * n
+        self.mX = [-1] * n
+        self.mY = [-1] * n
+        self.trace = [-1] * n
+        self.q = [0] * (n + 10)
+        self.arg = [0] * n
+        self.d = [0] * n
+        self.start = -1
+        self.finish = -1
+
+    def add_edge(self, u, v, cost):
+        self.c[u][v] = min(self.c[u][v], cost)
+
+    def solve(self):
+        max_iterations = 2 * self.n  # Or any other reasonable limit
+        iteration_count = 0
+
+        for i in range(self.n):
+            self.start = i
+            self.init_bfs()
+            while self.finish == -1:
+                iteration_count += 1
+                if iteration_count > max_iterations:
+                    return self.INF
+                self.find_aug_path()
+                if self.finish == -1:
+                    self.subx_addy()
+            self.enlarge()
+        
+        total_cost = sum(self.c[i][self.mX[i]] for i in range(self.n) if self.mX[i] != -1)
+        return total_cost if all(x != -1 for x in self.mX) else "No complete matching found"
+
+
+    def get_c(self, i, j):
+        return self.c[i][j] - self.fx[i] - self.fy[j]
+
+    def init_bfs(self):
+        self.trace = [-1] * self.n
+        self.ql = self.qr = 0
+        self.q[self.qr] = self.start
+        self.qr += 1
+        for j in range(self.n):
+            self.d[j] = self.get_c(self.start, j)
+            self.arg[j] = self.start
+        self.finish = -1
+
+    def find_aug_path(self):
+        while self.ql < self.qr:
+            i = self.q[self.ql]
+            self.ql += 1
+            for j in range(self.n):
+                if self.trace[j] == -1:
+                    w = self.get_c(i, j)
+                    if w == 0:
+                        self.trace[j] = i
+                        if self.mY[j] == -1:
+                            self.finish = j
+                            return
+                        self.q[self.qr] = self.mY[j]
+                        self.qr += 1
+                    elif self.d[j] > w:
+                        self.d[j] = w
+                        self.arg[j] = i
+
+    def subx_addy(self):
+        delta = min(self.d[j] for j in range(self.n) if self.trace[j] == -1)
+
+        self.fx[self.start] += delta
+        for j in range(self.n):
+            if self.trace[j] != -1:
+                self.fy[j] -= delta
+                self.fx[self.mY[j]] += delta
+            else:
+                self.d[j] -= delta
+
+        for j in range(self.n):
+            if self.trace[j] == -1 and self.d[j] == 0:
+                self.trace[j] = self.arg[j]
+                if self.mY[j] == -1:
+                    self.finish = j
+                    return
+                self.q[self.qr] = self.mY[j]
+                self.qr += 1
+
+    def enlarge(self):
+        while self.finish != -1:
+            i = self.trace[self.finish]
+            nxt = self.mX[i]
+            self.mX[i] = self.finish
+            self.mY[self.finish] = i
+            self.finish = nxt
+
 inputWall = {}
 inputSwitch = {}
 inputStone = {}
@@ -64,12 +163,21 @@ inputAres = {}
 fileNames = []
 mapWall = {}
 deadLock = {}
+shortest_dist = {}
 
 wall = []
 lineCnt = 0
 wordSet = set()
 wordSetCnt = 0
 wordMap = {}
+
+def is_movable_cell(fileName, vec):
+    if (vec[0] < 0 or vec[0] >= len(mapWall[fileName])):
+        return False
+    if (vec[1] < 0 or vec[1] >= len(mapWall[fileName][vec[0]])):
+        return False
+    #print(f"is_movable_cell: {vec}, {not mapWall[fileName][vec[0]][vec[1]]}")
+    return not mapWall[fileName][vec[0]][vec[1]]
 
 def in_inputWall(fileName, vec):
     if (vec[0] < 0 or vec[0] >= len(mapWall[fileName])):
@@ -205,105 +313,91 @@ for x in sorted(os.listdir(test_dir)):
         for i, j in new_deadLock:
             deadLock[fileName][i][j] = True
 
-class Hungarian:
-    INF = float('inf')
+        # shortest_dist is the shortest distance between pairs non-wall cells
+        # Beside walls, we will also block 1 cell
+        # For each blocked cell choice, we will calculate the shortest distance between pairs non-wall cells
+        # We also need to calculate for each choice of starting direction at start cell
+        # shortest_dist[file_name][blocked_i, blocked_j][start_i, start_j][start_direction][end_i, end_j]
+        
 
-    def __init__(self, n):
-        self.n = n
-        self.c = [[self.INF] * n for _ in range(n)]
-        self.fx = [0] * n
-        self.fy = [0] * n
-        self.mX = [-1] * n
-        self.mY = [-1] * n
-        self.trace = [-1] * n
-        self.q = [0] * (n + 10)
-        self.arg = [0] * n
-        self.d = [0] * n
-        self.start = -1
-        self.finish = -1
+        # Compute shortest distances for all pairs of non-wall cells, taking into account blocking a single cell
+        shortest_dist[fileName] = {}
+        directions = [Direction.Up, Direction.Left, Direction.Down, Direction.Right]
+        
+        def is_valid_cell(vec, blocked_vec=None):
+            """Checks if a cell is valid for traversal."""
+            if not is_movable_cell(fileName, vec):
+                #print(f"{vec} is not movable")
+                return False
+            if in_inputWall(fileName, vec) or (blocked_vec is not None and vec == blocked_vec):
+                return False
+            return True
+        
+        def bfs_shortest_path(start_vec, blocked_vec):
+            """Performs BFS to find the shortest path lengths from start_vec, considering blocked_vec."""
+            dist = {}
+            queue = Queue()
+            queue.put(start_vec)
+            dist[start_vec] = 0
+            
+            while not queue.empty():
+                current = queue.get()
+                for direction in directions:
+                    next_vec = current + direction.value
+                    if is_valid_cell(next_vec, blocked_vec) and next_vec not in dist:
+                        dist[next_vec] = dist[current] + 1
+                        queue.put(next_vec)
+            
+            return dist
+        
+        # Calculate shortest distances while considering each cell as blocked one by one
+        for i in range(height_map):
+            for j in range(width_map):
+                #print(f"Calculating shortest distances for {fileName} with blocked cell at ({i}, {j})")
+                blocked_vec = Vector([i, j])
+                if not is_valid_cell(blocked_vec):
+                    continue
+                
+                shortest_dist[fileName][blocked_vec] = {}
+                
+                for si in range(height_map):
+                    for sj in range(width_map):
+                        start_vec = Vector([si, sj])
+                        if not is_valid_cell(start_vec, blocked_vec):
+                            continue
+                    
+                        dist = bfs_shortest_path(start_vec, blocked_vec)
+                        
+                        shortest_dist[fileName][blocked_vec][start_vec] = dist
 
-    def add_edge(self, u, v, cost):
-        self.c[u][v] = min(self.c[u][v], cost)
+def get_shortest_dist(fileName, blocked_vec, start_vec, end_vec):
+    #print(f"Finding shortest distance from {start_vec} to {end_vec} in {fileName} with blocked cell at {blocked_vec}")
+    # Check if the input is valid
+    if (fileName not in shortest_dist):
+        #print(f"File not found in shortest distances: {fileName}")
+        return float('inf')
+    if blocked_vec not in shortest_dist[fileName]:
+        #print(f"Blocked vector not found in shortest distances: {blocked_vec}")
+        return float('inf')
+    if start_vec not in shortest_dist[fileName][blocked_vec]:
+        # print(f"Start vector not found in shortest distances: {start_vec}")
+        return float('inf')
+    
+    # Check if the end vector is in the computed distances
+    if end_vec not in shortest_dist[fileName][blocked_vec][start_vec]:
+        #print(f"End vector not found in computed distances: {end_vec}")
+        return float('inf')
+    
+    # Return the shortest distance from start to end
+    return shortest_dist[fileName][blocked_vec][start_vec][end_vec]
 
-    def solve(self):
-        for i in range(self.n):
-            self.fx[i] = min(self.c[i])
 
-        for j in range(self.n):
-            self.fy[j] = self.c[0][j] - self.fx[0]
-            for i in range(1, self.n):
-                self.fy[j] = min(self.fy[j], self.c[i][j] - self.fx[i])
 
-        for i in range(self.n):
-            self.start = i
-            self.init_bfs()
-            while self.finish == -1:
-                self.find_aug_path()
-                if self.finish == -1:
-                    self.subx_addy()
-            self.enlarge()
+# Complete execution or integration logic can be added here
+# E.g., process test cases or further analyze the results
 
-        total_cost = sum(self.c[i][self.mX[i]] for i in range(self.n))
-        return total_cost
 
-    def get_c(self, i, j):
-        return self.c[i][j] - self.fx[i] - self.fy[j]
-
-    def init_bfs(self):
-        self.trace = [-1] * self.n
-        self.ql = self.qr = 0
-        self.q[self.qr] = self.start
-        self.qr += 1
-        for j in range(self.n):
-            self.d[j] = self.get_c(self.start, j)
-            self.arg[j] = self.start
-        self.finish = -1
-
-    def find_aug_path(self):
-        while self.ql < self.qr:
-            i = self.q[self.ql]
-            self.ql += 1
-            for j in range(self.n):
-                if self.trace[j] == -1:
-                    w = self.get_c(i, j)
-                    if w == 0:
-                        self.trace[j] = i
-                        if self.mY[j] == -1:
-                            self.finish = j
-                            return
-                        self.q[self.qr] = self.mY[j]
-                        self.qr += 1
-                    elif self.d[j] > w:
-                        self.d[j] = w
-                        self.arg[j] = i
-
-    def subx_addy(self):
-        delta = min(self.d[j] for j in range(self.n) if self.trace[j] == -1)
-
-        self.fx[self.start] += delta
-        for j in range(self.n):
-            if self.trace[j] != -1:
-                self.fy[j] -= delta
-                self.fx[self.mY[j]] += delta
-            else:
-                self.d[j] -= delta
-
-        for j in range(self.n):
-            if self.trace[j] == -1 and self.d[j] == 0:
-                self.trace[j] = self.arg[j]
-                if self.mY[j] == -1:
-                    self.finish = j
-                    return
-                self.q[self.qr] = self.mY[j]
-                self.qr += 1
-
-    def enlarge(self):
-        while self.finish != -1:
-            i = self.trace[self.finish]
-            nxt = self.mX[i]
-            self.mX[i] = self.finish
-            self.mY[self.finish] = i
-            self.finish = nxt
+         
 
 class State:
     def __init__(self, name, ares, stones):
@@ -360,33 +454,79 @@ class State:
 
         # Calculate minimum cost to match all stones to the switches
         # using Hungarian algorithm and Manhattan distance
+        #print('------------------')
         hungarian = Hungarian(n)
-        for i, (stone_pos, w) in enumerate(self.stones.items()): # stone
-            #min_cost = float('inf')
-            for j in range(n): # switch
-                cost = (stone_pos - inputSwitch[self.name][j]).magnitude_square()
-                cost *= (w + 1)
-                #min_cost = min(min_cost, cost)
-                hungarian.add_edge(i, j, cost)
+        for i, (stone_pos, w) in enumerate(self.stones.items()):  # Iterate over stones
+
+            queue = PriorityQueue()
+            dist_list = {}
+
+            # Initialize with current stone position and all directions
+            for direction in Direction:
+                ares_pos = stone_pos - direction.value
+                if is_valid_cell(ares_pos):
+                    queue.put(PrioritizedItem(0, (stone_pos, direction)))
+                    dist_list[(stone_pos, direction)] = 0
+
+            while not queue.empty():
+                top_queue = queue.get()
+                current_stone_pos, current_direction = top_queue.item
+                current_cost = top_queue.priority
+                ares_pos = current_stone_pos - current_direction.value
+                
+                # print(f"current_stone_pos: {current_stone_pos}, current_direction: {current_direction}, current_cost: {current_cost} ares_pos: {ares_pos}")
+
+                # Explore all possible moves
+                for new_direction in Direction:
+                    next_stone_pos = current_stone_pos + new_direction.value
+                    next_ares_pos = current_stone_pos - new_direction.value
+                    #print(f"{is_valid_cell(next_stone_pos)}, {is_valid_cell(next_ares_pos)}")
+                    if (is_valid_cell(next_stone_pos) and is_valid_cell(next_ares_pos)):
+                        ares_move_cost = get_shortest_dist(self.name, current_stone_pos, ares_pos, next_ares_pos)
+                        # print(f"Attempting next_stone_pos: {next_stone_pos}, new_direction: {new_direction} next_ares_pos: {next_ares_pos} ares_pos: {ares_pos} -> ares_next_pos: {next_ares_pos} ares_move_cost: {ares_move_cost}")
+                        if ares_move_cost == float('inf'):
+                            continue
+
+                        action_cost = ares_move_cost + (w + 1)
+                        new_cost = current_cost + action_cost
+                        
+                        if ((next_stone_pos, new_direction) not in dist_list or 
+                            dist_list[(next_stone_pos, new_direction)] > new_cost):
+                            # print(f"next_stone_pos: {next_stone_pos}, new_direction: {new_direction}, ares_move_cost: {ares_move_cost}, action_cost: {action_cost}")
+                            
+                            dist_list[(next_stone_pos, new_direction)] = new_cost
+                            #print(f"next_stone_pos: {next_stone_pos}, new_direction: {new_direction}, action_cost: {action_cost}")
+                            queue.put(PrioritizedItem(new_cost, (next_stone_pos, new_direction)))        
+                # print('------------')
+
+            for j, switch_pos in enumerate(inputSwitch[self.name]):  # Iterate over switches
+                min_cost = float('inf')
+                for direction in Direction:
+                    if (switch_pos, direction) in dist_list:
+                        min_cost = min(min_cost, dist_list[(switch_pos, direction)])
+                if min_cost != float('inf'):
+                    #print(f"Adding edge from {i} to {j} with cost {min_cost}")
+                    hungarian.add_edge(i, j, min_cost)
+
             #total_cost += min_cost
         total_cost += hungarian.solve()
 
-        # Distance from player to the nearest stone
-        total_cost += min((self.ares - stone).magnitude_square() for stone in self.stones.keys())
+        # # Distance from player to the nearest stone
+        # total_cost += min([get_shortest_dist(self.name, None, self.ares, stone_pos) for stone_pos in self.stones.keys()])
 
-        # Penalty for deadlock
-        for (stone_pos, w) in self.stones.items():
-            # Penalty +infinity if stone in corner and not on a switch
-            if is_deadLock(self.name, stone_pos) and stone_pos not in inputSwitch[self.name]:
-                total_cost += float('inf')
-            ## Penalty +infinity if 2 stones are adjacent and are not on switches and cannot be moved
-            f = stone_pos in inputSwitch[self.name]
-            for stone_pos2 in self.stones.keys():
-                vec_dist = stone_pos - stone_pos2
-                if vec_dist.magnitude_square() == 1 and (not f or stone_pos2 not in inputSwitch[self.name]):
-                    direction = Vector([vec_dist[1], vec_dist[0]])
-                    if (in_inputWall(self.name, stone_pos + direction) or in_inputWall(self.name, stone_pos - direction)) and (in_inputWall(self.name, stone_pos2 + direction) or in_inputWall(self.name, stone_pos2 - direction)):
-                        total_cost += float('inf')
+        # # Penalty for deadlock
+        # for (stone_pos, w) in self.stones.items():
+        #     # Penalty +infinity if stone in corner and not on a switch
+        #     if is_deadLock(self.name, stone_pos) and stone_pos not in inputSwitch[self.name]:
+        #         total_cost += float('inf')
+        #     ## Penalty +infinity if 2 stones are adjacent and are not on switches and cannot be moved
+        #     f = stone_pos in inputSwitch[self.name]
+        #     for stone_pos2 in self.stones.keys():
+        #         vec_dist = stone_pos - stone_pos2
+        #         if vec_dist.magnitude_square() == 1 and (not f or stone_pos2 not in inputSwitch[self.name]):
+        #             direction = Vector([vec_dist[1], vec_dist[0]])
+        #             if (in_inputWall(self.name, stone_pos + direction) or in_inputWall(self.name, stone_pos - direction)) and (in_inputWall(self.name, stone_pos2 + direction) or in_inputWall(self.name, stone_pos2 - direction)):
+        #                 total_cost += float('inf')
 
         return total_cost
 
@@ -453,7 +593,7 @@ class SolverBFS:
                     # child.printTree()
                     print(child.path())
                     print("Node: ", self.node_number)
-                    print("Cost: ", child.cost)
+                    print("Cost: ", child.cost) 
                     return
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
@@ -476,7 +616,6 @@ class SolverUCS:
                 #top.printTree()
                 print(top.path())
                 print("Node: ", self.node_number)
-                print("Cost: ", top.cost)
                 return
             self.node_number += 1
             for child in top.children():
@@ -489,7 +628,7 @@ class SolverUCS:
 import time
 time_start = time.time()
 for fileName in fileNames:
-    solver = SolverUCS(State(fileName, inputAres[fileName], inputStone[fileName]))
+    solver = SolverBFS(State(fileName, inputAres[fileName], inputStone[fileName]))
     solver.expand()
 time_end = time.time()
 print('time cost', time_end-time_start)
