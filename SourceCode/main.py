@@ -1,12 +1,11 @@
 from asyncio.windows_events import NULL
-from multiprocessing import parent_process
 import os
 from enum import Enum
 import math
 from queue import PriorityQueue
 from queue import Queue
-from typing import Tuple
-#from memory_profiler import profile
+# from memory_profiler import profile
+
 
 class Vector:
     def __init__(self, *components):
@@ -14,45 +13,51 @@ class Vector:
             self.components = tuple(components[0])
         else:
             self.components = tuple(components)
+
     def __repr__(self):
-         return f"Vector({', '.join(map(str, self.components))})"
+        return f"Vector({', '.join(map(str, self.components))})"
+
     def __add__(self, other):
         if len(self.components) != len(other.components):
             raise ValueError("Vectors must be of the same dimension.")
-        return Vector(*[a + b for a, b in zip(self.components, other.components)])
-    
+        return Vector(*[a + b for a, b in zip(self.components,
+                                              other.components)])
+
     def __sub__(self, other):
         if len(self.components) != len(other.components):
             raise ValueError("Vectors must be of the same dimension.")
-        return Vector(*[a - b for a, b in zip(self.components, other.components)])
-    
+        return Vector(*[a - b for a, b in zip(self.components,
+                                              other.components)])
+
     def __mul__(self, scalar):
         return Vector(*[scalar * x for x in self.components])
+
     def __hash__(self):
         return hash(self.components)
 
     def __rmul__(self, scalar):
         return self.__mul__(scalar)
-    
+
     def dot(self, other):
         if len(self.components) != len(other.components):
             raise ValueError("Vectors must be of the same dimension.")
         return sum(a * b for a, b in zip(self.components, other.components))
-    
+
     def magnitude_square(self):
         return sum(x ** 2 for x in self.components)
 
     def magnitude(self):
         return math.sqrt(self.magnitude_square())
-    
+
     def __eq__(self, other):
         return self.components == other.components
-    
+
     def __len__(self):
         return len(self.components)
-    
+
     def __getitem__(self, index):
         return self.components[index]
+
 
 inputWall = {}
 inputSwitch = {}
@@ -68,23 +73,29 @@ wordSet = set()
 wordSetCnt = 0
 wordMap = {}
 
+
 def in_inputWall(fileName, vec):
     if (vec[0] < 0 or vec[0] >= len(mapWall[fileName])):
         return False
     if (vec[1] < 0 or vec[1] >= len(mapWall[fileName][0])):
         return False
     return mapWall[fileName][vec[0]][vec[1]]
+
+
 def is_deadLock(fileName, vec):
     if (vec[0] < 0 or vec[0] >= len(deadLock[fileName])):
         return False
     if (vec[1] < 0 or vec[1] >= len(deadLock[fileName][0])):
         return False
     return deadLock[fileName][vec[0]][vec[1]]
+
+
 class Direction(Enum):
     Up = Vector([-1, 0])
     Left = Vector([0, -1])
     Down = Vector([1, 0])
     Right = Vector([0, 1])
+
 
 test_dir = './TestCases/'
 test_list = ['input_4.txt']
@@ -111,19 +122,21 @@ for x in sorted(os.listdir(test_dir)):
         for i in range(1, len(lines)):
             for j in range(0, len(lines[i])):
                 if (lines[i][j] == '#'):
-                   inputWall[fileName].append(Vector([i - 1,j]))
+                    inputWall[fileName].append(Vector([i - 1, j]))
                 elif (lines[i][j] == '$'):
-                    inputStone[fileName][Vector([i - 1, j])] = weightQueue.get()
+                    inputStone[fileName][Vector(
+                        [i - 1, j])] = weightQueue.get()
                 elif (lines[i][j] == '@'):
-                    inputAres[fileName] = Vector([i - 1,j])
+                    inputAres[fileName] = Vector([i - 1, j])
                 elif (lines[i][j] == '.'):
-                    inputSwitch[fileName].append(Vector([i - 1,j]))
+                    inputSwitch[fileName].append(Vector([i - 1, j]))
                 elif (lines[i][j] == '*'):
-                    inputStone[fileName][Vector([i - 1, j])] = weightQueue.get()
-                    inputSwitch[fileName].append(Vector([i - 1,j]))
+                    inputStone[fileName][Vector(
+                        [i - 1, j])] = weightQueue.get()
+                    inputSwitch[fileName].append(Vector([i - 1, j]))
                 elif (lines[i][j] == '+'):
-                    inputSwitch[fileName].append(Vector([i - 1,j]))
-                    inputAres[fileName] = Vector([i - 1,j])
+                    inputSwitch[fileName].append(Vector([i - 1, j]))
+                    inputAres[fileName] = Vector([i - 1, j])
 
         for vec in inputWall[fileName]:
             mapWall[fileName][vec[0]][vec[1]] = True
@@ -136,9 +149,12 @@ for x in sorted(os.listdir(test_dir)):
                 queue.put(Vector([i, j]))
                 while not queue.empty():
                     vec = queue.get()
-                    if is_deadLock(fileName, vec) or vec in inputSwitch[fileName] or vec == inputAres[fileName]:
+                    if is_deadLock(fileName, vec) \
+                            or vec in inputSwitch[fileName] \
+                            or vec == inputAres[fileName]:
                         continue
-                    near_deadLock = [is_deadLock(fileName, vec + direct.value) for direct in Direction]
+                    near_deadLock = [is_deadLock(
+                        fileName, vec + direct.value) for direct in Direction]
                     if sum(near_deadLock) >= 3:
                         deadLock[fileName][vec[0]][vec[1]] = True
                         for direct in Direction:
@@ -150,8 +166,10 @@ for x in sorted(os.listdir(test_dir)):
             for j in range(width_map):
                 if Vector([i, j]) in inputSwitch[fileName]:
                     continue
-                myDirection = [Direction.Up,  Direction.Left, Direction.Down, Direction.Right]
-                wall_near = [is_deadLock(fileName, Vector([i, j]) + direct.value) for direct in myDirection]
+                myDirection = [Direction.Up,  Direction.Left,
+                               Direction.Down, Direction.Right]
+                wall_near = [is_deadLock(fileName, Vector(
+                    [i, j]) + direct.value) for direct in myDirection]
                 for k in range(4):
                     if wall_near[k] and wall_near[k - 1]:
                         new_deadLock.append((i, j))
@@ -177,7 +195,8 @@ for x in sorted(os.listdir(test_dir)):
                     continue
                 for direct_move_base, direct_wall in direct_move_wall:
                     border = []
-                    for direct_move in [Vector([0, 0]) - direct_move_base, direct_move_base]:
+                    for direct_move in [Vector([0, 0]) - direct_move_base,
+                                        direct_move_base]:
                         cur = vec
                         while 0 <= cur[0] and cur[0] < height_map and 0 <= cur[1] and cur[1] < width_map:
                             if is_deadLock(fileName, cur):
@@ -190,7 +209,8 @@ for x in sorted(os.listdir(test_dir)):
                     flag = True
                     cur = border[0] + direct_move_base
                     while cur != border[1]:
-                        if cur in inputSwitch[fileName] or not is_deadLock(fileName, cur + direct_wall):
+                        if cur in inputSwitch[fileName] or \
+                                not is_deadLock(fileName, cur + direct_wall):
                             flag = False
                             break
                         cur += direct_wall
@@ -201,6 +221,7 @@ for x in sorted(os.listdir(test_dir)):
                             cur += direct_wall
         for i, j in new_deadLock:
             deadLock[fileName][i][j] = True
+
 
 class Hungarian:
     INF = float('inf')
@@ -302,6 +323,7 @@ class Hungarian:
             self.mY[self.finish] = i
             self.finish = nxt
 
+
 class State:
     def __init__(self, name, ares, stones):
         self.ares = ares
@@ -314,13 +336,13 @@ class State:
             res += str(stone) + ": " + str(self.stones[stone]) + '\n'
         res += "ares: " + str(self.ares)
         return res
-    
+
     def isGoal(self):
         for switch in inputSwitch[self.name]:
             if (switch not in self.stones.keys()):
                 return False
         return True
-    
+
     def neighbors(self):
         result = []
         for direct in Direction:
@@ -337,17 +359,20 @@ class State:
         if ((self.ares + enum) not in self.stones.keys()):
             return newState
 
-        if ((self.ares + 2*enum) in self.stones.keys() or in_inputWall(self.name, self.ares + 2*enum)):
+        if ((self.ares + 2*enum) in self.stones.keys()
+                or in_inputWall(self.name, self.ares + 2*enum)):
             return NULL
 
         newState.stones.pop(newState.ares)
-        
+
         newState.stones[newState.ares + enum] = self.stones[newState.ares]
 
         return newState
 
     def actionCost(self, enum):
-        if (self.ares + enum) in self.stones.keys() and (self.ares + 2*enum) not in self.stones.keys() and not in_inputWall(self.name, self.ares + 2*enum):
+        if (self.ares + enum) in self.stones.keys() \
+                and (self.ares + 2*enum) not in self.stones.keys() \
+                and not in_inputWall(self.name, self.ares + 2*enum):
             return self.stones[self.ares + enum] + 1
         return 1
 
@@ -358,34 +383,43 @@ class State:
         # Calculate minimum cost to match all stones to the switches
         # using Hungarian algorithm and Manhattan distance
         hungarian = Hungarian(n)
-        for i, (stone_pos, w) in enumerate(self.stones.items()): # stone
-            #min_cost = float('inf')
-            for j in range(n): # switch
-                cost = (stone_pos - inputSwitch[self.name][j]).magnitude_square()
+        for i, (stone_pos, w) in enumerate(self.stones.items()):  # stone
+            # min_cost = float('inf')
+            for j in range(n):  # switch
+                cost = (
+                    stone_pos - inputSwitch[self.name][j]).magnitude_square()
                 cost *= (w + 1)
-                #min_cost = min(min_cost, cost)
+                # min_cost = min(min_cost, cost)
                 hungarian.add_edge(i, j, cost)
-            #total_cost += min_cost
+            # total_cost += min_cost
         total_cost += hungarian.solve()
 
         # Distance from player to the nearest stone
-        total_cost += min((self.ares - stone).magnitude_square() for stone in self.stones.keys())
+        total_cost += min((self.ares - stone).magnitude_square()
+                          for stone in self.stones.keys())
 
         # Penalty for deadlock
         for (stone_pos, w) in self.stones.items():
             # Penalty +infinity if stone in corner and not on a switch
-            if is_deadLock(self.name, stone_pos) and stone_pos not in inputSwitch[self.name]:
+            if is_deadLock(self.name, stone_pos) and \
+                    stone_pos not in inputSwitch[self.name]:
                 total_cost += float('inf')
-            ## Penalty +infinity if 2 stones are adjacent and are not on switches and cannot be moved
+            # Penalty +infinity if 2 stones are adjacent and are not on switches and cannot be moved
             f = stone_pos in inputSwitch[self.name]
             for stone_pos2 in self.stones.keys():
                 vec_dist = stone_pos - stone_pos2
-                if vec_dist.magnitude_square() == 1 and (not f or stone_pos2 not in inputSwitch[self.name]):
+                if vec_dist.magnitude_square() == 1 and \
+                        (not f or stone_pos2 not in inputSwitch[self.name]):
                     direction = Vector([vec_dist[1], vec_dist[0]])
-                    if (in_inputWall(self.name, stone_pos + direction) or in_inputWall(self.name, stone_pos - direction)) and (in_inputWall(self.name, stone_pos2 + direction) or in_inputWall(self.name, stone_pos2 - direction)):
+                    if (in_inputWall(self.name, stone_pos + direction)
+                            or in_inputWall(self.name, stone_pos - direction))\
+                            and (in_inputWall(self.name, stone_pos2 + direction)
+                                 or in_inputWall(self.name,
+                                                 stone_pos2 - direction)):
                         total_cost += float('inf')
 
         return total_cost
+
 
 class SearchNode:
     def __init__(self, state, parent, cost, direct):
@@ -393,10 +427,10 @@ class SearchNode:
         self.parent = parent
         self.cost = cost
         if (parent != NULL):
-           self.cost += parent.cost
-           self.direction = str(direct)[10]
-           if (cost == 1):
-               self.direction = self.direction.lower()
+            self.cost += parent.cost
+            self.direction = str(direct)[10]
+            if (cost == 1):
+                self.direction = self.direction.lower()
 
     def priority_value(self):
         return self.state.heuristic() + self.cost
@@ -406,7 +440,8 @@ class SearchNode:
         for direct in Direction:
             newState = self.state.neighbor(direct.value)
             if (newState != NULL):
-                result.append(SearchNode(newState, self, self.state.actionCost(direct.value), direct))
+                result.append(SearchNode(newState, self,
+                              self.state.actionCost(direct.value), direct))
         return result
 
     def printTree(self):
@@ -414,11 +449,12 @@ class SearchNode:
             self.parent.printTree()
         print(self.state)
         print("cost: ", self.cost)
+
     def path(self):
         if (self.parent == NULL):
             return ""
         return self.parent.path() + self.direction
-            
+
 
 class PrioritizedItem:
     def __init__(self, priority, item):
@@ -427,10 +463,13 @@ class PrioritizedItem:
 
     def __lt__(self, other):
         return self.priority < other.priority
+
     def getItem(self):
         return self.item
 
-#@profile
+# @profile
+
+
 class SolverBFS:
     def __init__(self, state):
         self.rootNode = SearchNode(state, NULL, 0, NULL)
@@ -439,7 +478,8 @@ class SolverBFS:
         self.node_number = 0
 
         self.priorityQueue = PriorityQueue()
-        self.priorityQueue.put(PrioritizedItem(self.rootNode.priority_value(), self.rootNode))
+        self.priorityQueue.put(PrioritizedItem(
+            self.rootNode.priority_value(), self.rootNode))
 
     def expand(self):
         while (not self.priorityQueue.empty()):
@@ -453,8 +493,10 @@ class SolverBFS:
                     return
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
-                    self.priorityQueue.put(PrioritizedItem(child.priority_value(), child))
+                    self.priorityQueue.put(PrioritizedItem(
+                        child.priority_value(), child))
         print("FAILURE")
+
 
 class SolverUCS:
     def __init__(self, state):
@@ -463,7 +505,8 @@ class SolverUCS:
         self.reached[str(state)] = 0
         self.node_number = 0
         self.priorityQueue = PriorityQueue()
-        self.priorityQueue.put(PrioritizedItem(self.rootNode.cost, self.rootNode))
+        self.priorityQueue.put(PrioritizedItem(
+            self.rootNode.cost, self.rootNode))
 
     def expand(self):
         while (not self.priorityQueue.empty()):
@@ -475,12 +518,14 @@ class SolverUCS:
                 return
             self.node_number += 1
             for child in top.children():
-                if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
+                if (str(child.state) not in self.reached.keys()
+                        or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
                     self.priorityQueue.put(PrioritizedItem(child.cost, child))
         print("FAILURE")
 
 
 for fileName in fileNames:
-    solver = SolverBFS(State(fileName, inputAres[fileName], inputStone[fileName]))
+    solver = SolverBFS(
+        State(fileName, inputAres[fileName], inputStone[fileName]))
     solver.expand()
