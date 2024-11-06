@@ -167,6 +167,9 @@ class PrioritizedItem:
     def getItem(self):
         return self.item
 
+import time
+time_start = time.time()
+
 inputWall = {}
 inputSwitch = {}
 inputStone = {}
@@ -362,24 +365,19 @@ for x in sorted(os.listdir(test_dir)):
             return dist
         
         # Calculate shortest distances while considering each cell as blocked one by one
-        for i in range(height_map):
-            for j in range(width_map):
-                #print(f"Calculating shortest distances for {fileName} with blocked cell at ({i}, {j})")
-                blocked_vec = Vector([i, j])
+        for blocki in range(height_map):
+            for blockj in range(width_map):
+                blocked_vec = Vector([blocki, blockj])
+                shortest_dist[fileName][blocked_vec] = {}
                 if not is_valid_cell(blocked_vec):
                     continue
-                
-                shortest_dist[fileName][blocked_vec] = {}
-                
-                for si in range(height_map):
-                    for sj in range(width_map):
-                        start_vec = Vector([si, sj])
-                        if not is_valid_cell(start_vec, blocked_vec):
-                            continue
-                    
-                        dist = bfs_shortest_path(start_vec, blocked_vec)
-                        
-                        shortest_dist[fileName][blocked_vec][start_vec] = dist
+                for direction in directions:
+                    start_vec = blocked_vec + direction.value
+                #print(f"Calculating shortest distances for {fileName} with blocked cell at ({i}, {j})")
+                    if not is_valid_cell(start_vec):
+                        continue
+                    dist = bfs_shortest_path(start_vec, blocked_vec)
+                    shortest_dist[fileName][blocked_vec][start_vec] = dist
 
 def get_shortest_dist(fileName, blocked_vec, start_vec, end_vec):
     # print(f"Finding shortest distance from {start_vec} to {end_vec} in {fileName} with blocked cell at {blocked_vec}")
@@ -408,51 +406,68 @@ def get_shortest_dist(fileName, blocked_vec, start_vec, end_vec):
 # Complete execution or integration logic can be added here
 # E.g., process test cases or further analyze the results
 
+
+
 dist_list = {}
-for fileName in fileNames:
-    dist_list[fileName] = {}
-    for i, (_, w) in enumerate(inputStone[fileName].items()):
+
+def get_pushing_stone_cost(fileName, i, stone_pos, switch_pos, direction):
+    if fileName not in dist_list:
+        dist_list[fileName] = {}
+    if i not in dist_list[fileName]:
         dist_list[fileName][i] = {}
-        for stone_x in range(len(mapWall[fileName])):
-            for stone_y in range(len(mapWall[fileName][stone_x])):
-                start_stone_pos = Vector([stone_x, stone_y])
-                queue = PriorityQueue()
-                dist_list[fileName][i][start_stone_pos] = {}
+    if stone_pos not in dist_list[fileName][i]:
+        dist_list[fileName][i][stone_pos] = {}
+    if len(dist_list[fileName][i][stone_pos].keys()) != 0:
+        if (switch_pos, direction) in dist_list[fileName][i][stone_pos]:
+            return dist_list[fileName][i][stone_pos][switch_pos, direction]
+        else:
+            return float('inf')
+    for id, _w in enumerate(inputStone[fileName].values()):
+        if id == i:
+            w = _w
+    start_stone_pos = stone_pos
+    queue = PriorityQueue()
+    dist_list[fileName][i][start_stone_pos] = {}
 
-                # Initialize with current stone position and all directions
-                for direction in Direction:
-                    ares_pos = start_stone_pos - direction.value
-                    if is_valid_cell(ares_pos):
-                        queue.put(PrioritizedItem(0, (start_stone_pos, direction)))
-                        dist_list[fileName][i][start_stone_pos][start_stone_pos, direction] = 0
-                #print(f"Calculating distances for {fileName} with stone {i} at {start_stone_pos}")
-                while not queue.empty():
-                    top_queue = queue.get()
-                    current_stone_pos, current_direction = top_queue.item
-                    current_cost = top_queue.priority
-                    ares_pos = current_stone_pos - current_direction.value
-                    #print(f"current_stone_pos: {current_stone_pos}, current_direction: {current_direction}, current_cost: {current_cost} ares_pos: {ares_pos}")
+    # Initialize with current stone position and all directions
+    for direction in Direction:
+        ares_pos = start_stone_pos - direction.value
+        if is_valid_cell(ares_pos):
+            queue.put(PrioritizedItem(0, (start_stone_pos, direction)))
+            dist_list[fileName][i][start_stone_pos][start_stone_pos, direction] = 0
+    #print(f"Calculating distances for {fileName} with stone {i} at {start_stone_pos}")
+    while not queue.empty():
+        top_queue = queue.get()
+        current_stone_pos, current_direction = top_queue.item
+        current_cost = top_queue.priority
+        ares_pos = current_stone_pos - current_direction.value
+        #print(f"current_stone_pos: {current_stone_pos}, current_direction: {current_direction}, current_cost: {current_cost} ares_pos: {ares_pos}")
 
-                    # Explore all possible moves
-                    for new_direction in Direction:
-                        next_stone_pos = current_stone_pos + new_direction.value
-                        next_ares_pos = current_stone_pos - new_direction.value
-                        #print(f"{is_valid_cell(next_stone_pos)}, {is_valid_cell(next_ares_pos)}")
-                        if (is_valid_cell(next_stone_pos) and is_valid_cell(next_ares_pos)):
-                            ares_move_cost = get_shortest_dist(fileName, current_stone_pos, ares_pos, next_ares_pos)
-                            # print(f"Attempting next_stone_pos: {next_stone_pos}, new_direction: {new_direction} next_ares_pos: {next_ares_pos} ares_pos: {ares_pos} -> ares_next_pos: {next_ares_pos} ares_move_cost: {ares_move_cost}")
-                            if ares_move_cost == float('inf'):
-                                continue
+        # Explore all possible moves
+        for new_direction in Direction:
+            next_stone_pos = current_stone_pos + new_direction.value
+            next_ares_pos = current_stone_pos - new_direction.value
+            #print(f"{is_valid_cell(next_stone_pos)}, {is_valid_cell(next_ares_pos)}")
+            if (is_valid_cell(next_stone_pos) and is_valid_cell(next_ares_pos)):
+                ares_move_cost = get_shortest_dist(fileName, current_stone_pos, ares_pos, next_ares_pos)
+                # print(f"Attempting next_stone_pos: {next_stone_pos}, new_direction: {new_direction} next_ares_pos: {next_ares_pos} ares_pos: {ares_pos} -> ares_next_pos: {next_ares_pos} ares_move_cost: {ares_move_cost}")
+                if ares_move_cost == float('inf'):
+                    continue
 
-                            action_cost = ares_move_cost + w + 1
-                            new_cost = current_cost + action_cost
-                            
-                            if ((next_stone_pos, new_direction) not in dist_list[fileName][i][start_stone_pos] or new_cost < dist_list[fileName][i][start_stone_pos][next_stone_pos, new_direction]):
-                                # print(f"next_stone_pos: {next_stone_pos}, new_direction: {new_direction}, ares_move_cost: {ares_move_cost}, action_cost: {action_cost}")
-                                
-                                dist_list[fileName][i][start_stone_pos][next_stone_pos, new_direction] = new_cost
-                                #print(f"next_stone_pos: {next_stone_pos}, new_direction: {new_direction}, action_cost: {action_cost}")
-                                queue.put(PrioritizedItem(new_cost, (next_stone_pos, new_direction)))       
+                action_cost = ares_move_cost + w + 1
+                new_cost = current_cost + action_cost
+                
+                if ((next_stone_pos, new_direction) not in dist_list[fileName][i][start_stone_pos] or new_cost < dist_list[fileName][i][start_stone_pos][next_stone_pos, new_direction]):
+                    # print(f"next_stone_pos: {next_stone_pos}, new_direction: {new_direction}, ares_move_cost: {ares_move_cost}, action_cost: {action_cost}")
+                    
+                    dist_list[fileName][i][start_stone_pos][next_stone_pos, new_direction] = new_cost
+                    #print(f"next_stone_pos: {next_stone_pos}, new_direction: {new_direction}, action_cost: {action_cost}")
+                    queue.put(PrioritizedItem(new_cost, (next_stone_pos, new_direction)))       
+
+    if (switch_pos, direction) in dist_list[fileName][i][start_stone_pos]:
+        return dist_list[fileName][i][start_stone_pos][switch_pos, direction]
+    else:
+        return float('inf')
          
 
 class State:
@@ -516,8 +531,7 @@ class State:
             for j, switch_pos in enumerate(inputSwitch[self.name]):  # Iterate over switches
                 min_cost = float('inf')
                 for direction in Direction:
-                    if (switch_pos, direction) in dist_list[self.name][i][stone_pos]:
-                        min_cost = min(min_cost, dist_list[self.name][i][stone_pos][switch_pos, direction])
+                    min_cost = min(min_cost, get_pushing_stone_cost(self.name, i, stone_pos, switch_pos, direction))
                 if min_cost != float('inf'):
                     
                     hungarian.add_edge(i, j, min_cost)
@@ -627,9 +641,6 @@ class SolverUCS:
                     self.priorityQueue.put(PrioritizedItem(child.cost, child))
         print("FAILURE")
 
-
-import time
-time_start = time.time()
 for fileName in fileNames:
     solver = SolverBFS(State(fileName, inputAres[fileName], inputStone[fileName]))
     solver.expand()
