@@ -218,10 +218,10 @@ class Direction(Enum):
     Down = Vector([1, 0])
     Right = Vector([0, 1])
 
-test_dir = '../official_test/'
+test_dir = './TestCases/'
 test_list = ['demo.txt']
 for x in sorted(os.listdir(test_dir)):
-    if x.startswith("random_047") or x in test_list:
+    if x.endswith(".txt") and x in test_list:
         content = open(test_dir + x, 'r').read()
         fileName = x[:-4]
         fileNames.append(fileName)
@@ -498,21 +498,27 @@ class State:
     
     def neighbors(self):
         result = []
-        for stone in self.stones():
-            for direct in Direction:
-                newState = self.neighbor(stone, direct.value)
-                if (newState != NULL):
-                    result.append(newState)
-            return result
+        for direct in Direction:
+            newState = self.neighbor(direct.value)
+            if (newState != NULL):
+                result.append(newState)
+        return result
 
-    def neighbor(self, stone, enum):
-        if ((stone + enum) in self.stones or in_inputWall(self.name, stone + enum) or (stone - enum) not in self.reached):
+    def neighbor(self, enum):
+        if in_inputWall(self.name, self.ares + enum):
             return NULL
-        newStateStones = self.stones.copy()
-        newStateStones.pop(stone)
-        newStateStones[stone + enum] = self.stones[stone]
+ 
+        if ((self.ares + enum) not in self.stones):
+            return State(self.name, self.ares + enum, self.stones)
 
-        return State(self.name, stone, newStateStones)
+        if ((self.ares + 2*enum) in self.stones or in_inputWall(self.name, self.ares + 2*enum)):
+            return NULL
+
+        newStateStones = self.stones.copy()
+        newStateStones.pop(self.ares + enum)
+        newStateStones[self.ares + 2*enum] = self.stones[self.ares + enum]
+
+        return State(self.name, self.ares + enum, newStateStones)
 
     def reverseNeighbor(self, enum):
         newStateStone = self.stones.copy()
@@ -521,28 +527,10 @@ class State:
             newStateStone[self.ares] = self.stones[self.ares + enum]
         return State(self.name, self.ares - enum, newStateStone)
 
-    def actionCost(self, stone, enum):
-        return len(self.reached[stone - enum]) + self.stones[stone] + 1
-    def actionPath(self, stone, direct):
-        return self.reached[stone - direct.value] + str(direct)[10]
-
-    def extractPath(self):
-        start = time.time()
-        self.reached = {}
-        queue = PriorityQueue()
-        queue.put(PrioritizedItem('', self.ares))
-        self.reached[self.ares] = ''
-
-        while not queue.empty():
-            top = queue.get()
-            for direct in Direction:
-                if ((space:=(top.item + direct.value)) in self.stones or in_inputWall(self.name, space)):
-                    continue
-                if space not in self.reached or len(self.reached[space]) > len(top.priority) + 1:
-                    self.reached[space] = (prio:=(top.priority + str(direct)[10].lower()))
-                    queue.put(PrioritizedItem(prio, space))
-        end = time.time()
-        #print("Check reached done. Time taken: ", end - start)
+    def actionCost(self, enum):
+        if (self.ares + enum) in self.stones.keys() and (self.ares + 2*enum) not in self.stones.keys() and not in_inputWall(self.name, self.ares + 2*enum):
+            return self.stones[self.ares + enum] + 1
+        return 1
 
     def heuristic(self):
         n = len(inputSwitch[self.name])
@@ -584,25 +572,26 @@ class State:
         return total_cost
 
 class SearchNode:
-    def __init__(self, state, parent, cost, path):
+    def __init__(self, state, parent, cost, direct):
         self.state = state
         self.cost = cost
-        self.path = path
+        self.path = ''
         if (parent != NULL):
            self.cost += parent.cost
-           self.path = parent.path + self.path
+           direction = str(direct)[10]
+           if (cost == 1):
+               direction = direction.lower()
+           self.path = parent.path + direction
 
     def priority_value(self):
         return self.state.heuristic() + self.cost
 
     def children(self):
         result = []
-        self.state.extractPath()
-        for stone in self.state.stones:
-            for direct in Direction:
-                newState = self.state.neighbor(stone, direct.value)
-                if (newState != NULL):
-                    result.append(SearchNode(newState, self, self.state.actionCost(stone, direct.value), self.state.actionPath(stone, direct)))
+        for direct in Direction:
+            newState = self.state.neighbor(direct.value)
+            if (newState != NULL):
+                result.append(SearchNode(newState, self, self.state.actionCost(direct.value), direct))
         return result
 
     def printTree(self):
@@ -627,7 +616,7 @@ class SearchNode:
 #@profile
 class SolverBFS:
     def __init__(self, state):
-        self.rootNode = SearchNode(state, NULL, 0, '')
+        self.rootNode = SearchNode(state, NULL, 0, NULL)
         self.reached = {}
         self.reached[str(state)] = 0
         self.node_number = 0
@@ -638,11 +627,11 @@ class SolverBFS:
     def expand(self):
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
+            print ("\033[A                             \033[A")
             self.node_number += 1
-            if (self.node_number % 100 != 0): 
-                print ("\033[A                             \033[A")
-                print(self.node_number)
+            #if (self.node_number % 1000 == 0): 
             #   print(top.path)    
+            print(self.node_number)
             for child in top.children():
                 if (child.state.isGoal()):
                     #child.printTree()
@@ -657,7 +646,7 @@ class SolverBFS:
 
 class SolverUCS:
     def __init__(self, state):
-        self.rootNode = SearchNode(state, NULL, 0, '')
+        self.rootNode = SearchNode(state, NULL, 0, NULL)
         self.reached = {}
         self.reached[str(state)] = 0
         self.node_number = 0
