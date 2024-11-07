@@ -1,4 +1,5 @@
 from asyncio.windows_events import NULL
+from logging import raiseExceptions
 from multiprocessing import parent_process
 import os
 from enum import Enum
@@ -7,6 +8,7 @@ from queue import PriorityQueue
 from queue import Queue
 from typing import Tuple
 import tracemalloc
+import sys
 #from memory_profiler import profile
 
 tracemalloc.start()
@@ -174,67 +176,80 @@ class PrioritizedItem:
     def getItem(self):
         return self.item
 
-import time
-time_start = time.time()
-
-inputWall = {}
-inputSwitch = {}
-inputStone = {}
-inputAres = {}
-fileNames = []
-mapWall = {}
-deadLock = {}
-shortest_dist = {}
-
-wall = []
-lineCnt = 0
-wordSet = set()
-wordSetCnt = 0
-wordMap = {}
-
-def is_movable_cell(fileName, vec):
-    if (vec[0] < 0 or vec[0] >= len(mapWall[fileName])):
-        return False
-    if (vec[1] < 0 or vec[1] >= len(mapWall[fileName][vec[0]])):
-        return False
-    #print(f"is_movable_cell: {vec}, {not mapWall[fileName][vec[0]][vec[1]]}")
-    return not mapWall[fileName][vec[0]][vec[1]]
-
-def in_inputWall(fileName, vec):
-    if (vec[0] < 0 or vec[0] >= len(mapWall[fileName])):
-        return False
-    if (vec[1] < 0 or vec[1] >= len(mapWall[fileName][0])):
-        return False
-    return mapWall[fileName][vec[0]][vec[1]]
-def is_deadLock(fileName, vec):
-    if (vec[0] < 0 or vec[0] >= len(deadLock[fileName])):
-        return False
-    if (vec[1] < 0 or vec[1] >= len(deadLock[fileName][0])):
-        return False
-    return deadLock[fileName][vec[0]][vec[1]]
-class Direction(Enum):
-    Up = Vector([-1, 0])
-    Left = Vector([0, -1])
-    Down = Vector([1, 0])
-    Right = Vector([0, 1])
 
 test_dir = './TestCases/'
-test_list = ['demo.txt']
-for x in sorted(os.listdir(test_dir)):
-    if x.startswith("random_047") or x in test_list:
-        content = open(test_dir + x, 'r').read()
-        fileName = x[:-4]
-        fileNames.append(fileName)
-        inputWall[fileName] = []
-        inputSwitch[fileName] = []
-        inputStone[fileName] = {}
+
+class Input():
+    inputWall = {}
+    inputSwitch = {}
+    inputStone = {}
+    inputAres = {}
+    fileNames = []
+    mapWall = {}
+    deadLock = {}
+    shortest_dist = {}
+    @staticmethod
+    def is_movable_cell(fileName, vec):
+        if (vec[0] < 0 or vec[0] >= len(Input.mapWall[fileName])):
+            return False
+        if (vec[1] < 0 or vec[1] >= len(Input.mapWall[fileName][vec[0]])):
+            return False
+        #print(f"is_movable_cell: {vec}, {not mapWall[fileName][vec[0]][vec[1]]}")
+        return not Input.mapWall[fileName][vec[0]][vec[1]]
+    @staticmethod
+    def in_inputWall(fileName, vec):
+        if (vec[0] < 0 or vec[0] >= len(Input.mapWall[fileName])):
+            return False
+        if (vec[1] < 0 or vec[1] >= len(Input.mapWall[fileName][0])):
+            return False
+        return Input.mapWall[fileName][vec[0]][vec[1]]
+    @staticmethod
+    def is_deadLock(fileName, vec):
+        if (vec[0] < 0 or vec[0] >= len(Input.deadLock[fileName])):
+            return False
+        if (vec[1] < 0 or vec[1] >= len(Input.deadLock[fileName][0])):
+            return False
+        return Input.deadLock[fileName][vec[0]][vec[1]]
+    @staticmethod
+    def is_valid_cell(fileName, vec, blocked_vec=None):
+            """Checks if a cell is valid for traversal."""
+            if not Input.is_movable_cell(fileName, vec):
+                #print(f"{vec} is not movable")
+                return False
+            if Input.in_inputWall(fileName, vec) or (blocked_vec is not None and vec == blocked_vec):
+                return False
+            return True
+    @staticmethod
+    def bfs_shortest_path(fileName, start_vec, blocked_vec):
+        """Performs BFS to find the shortest path lengths from start_vec, considering blocked_vec."""
+        dist = {}
+        queue = Queue()
+        queue.put(start_vec)
+        dist[start_vec] = 0
+            
+        while not queue.empty():
+            current = queue.get()
+            for direction in Direction:
+                next_vec = current + direction.value
+                if Input.is_valid_cell(fileName, next_vec, blocked_vec) and next_vec not in dist:
+                    dist[next_vec] = dist[current] + 1
+                    queue.put(next_vec)
+            
+        return dist
+    @staticmethod
+    def readFile(fileName):
+        content = open(test_dir + fileName, 'r').read()
+        Input.fileNames.append(fileName[:-4])
+        Input.inputWall[fileName] = []
+        Input.inputSwitch[fileName] = []
+        Input.inputStone[fileName] = {}
 
         lines = content.split('\n')
 
         height_map = len(lines[1:])
         width_map = max([len(line) for line in lines[1:]])
-        mapWall[fileName] = [[False] * width_map for _ in range(height_map)]
-        deadLock[fileName] = [[False] * width_map for _ in range(height_map)]
+        Input.mapWall[fileName] = [[False] * width_map for _ in range(height_map)]
+        Input.deadLock[fileName] = [[False] * width_map for _ in range(height_map)]
 
         weightQueue = Queue()
         for number in lines[0].split():
@@ -243,23 +258,23 @@ for x in sorted(os.listdir(test_dir)):
         for i in range(1, len(lines)):
             for j in range(0, len(lines[i])):
                 if (lines[i][j] == '#'):
-                   inputWall[fileName].append(Vector([i - 1,j]))
+                   Input.inputWall[fileName].append(Vector([i - 1,j]))
                 elif (lines[i][j] == '$'):
-                    inputStone[fileName][Vector([i - 1, j])] = weightQueue.get()
+                    Input.inputStone[fileName][Vector([i - 1, j])] = weightQueue.get()
                 elif (lines[i][j] == '@'):
-                    inputAres[fileName] = Vector([i - 1,j])
+                    Input.inputAres[fileName] = Vector([i - 1,j])
                 elif (lines[i][j] == '.'):
-                    inputSwitch[fileName].append(Vector([i - 1,j]))
+                    Input.inputSwitch[fileName].append(Vector([i - 1,j]))
                 elif (lines[i][j] == '*'):
-                    inputStone[fileName][Vector([i - 1, j])] = weightQueue.get()
-                    inputSwitch[fileName].append(Vector([i - 1,j]))
+                    Input.inputStone[fileName][Vector([i - 1, j])] = weightQueue.get()
+                    Input.inputSwitch[fileName].append(Vector([i - 1,j]))
                 elif (lines[i][j] == '+'):
-                    inputSwitch[fileName].append(Vector([i - 1,j]))
-                    inputAres[fileName] = Vector([i - 1,j])
+                    Input.inputSwitch[fileName].append(Vector([i - 1,j]))
+                    Input.inputAres[fileName] = Vector([i - 1,j])
 
-        for vec in inputWall[fileName]:
-            mapWall[fileName][vec[0]][vec[1]] = True
-            deadLock[fileName][vec[0]][vec[1]] = True
+        for vec in Input.inputWall[fileName]:
+            Input.mapWall[fileName][vec[0]][vec[1]] = True
+            Input.deadLock[fileName][vec[0]][vec[1]] = True
 
         # if a stone toward a dead end then it is a dead lock
         for i in range(height_map):
@@ -268,11 +283,11 @@ for x in sorted(os.listdir(test_dir)):
                 queue.put(Vector([i, j]))
                 while not queue.empty():
                     vec = queue.get()
-                    if is_deadLock(fileName, vec) or vec in inputSwitch[fileName] or vec == inputAres[fileName]:
+                    if Input.is_deadLock(fileName, vec) or vec in Input.inputSwitch[fileName] or vec == Input.inputAres[fileName]:
                         continue
-                    near_deadLock = [is_deadLock(fileName, vec + direct.value) for direct in Direction]
+                    near_deadLock = [Input.is_deadLock(fileName, vec + direct.value) for direct in Direction]
                     if sum(near_deadLock) >= 3:
-                        deadLock[fileName][vec[0]][vec[1]] = True
+                        Input.deadLock[fileName][vec[0]][vec[1]] = True
                         for direct in Direction:
                             queue.put(vec + direct.value)
 
@@ -280,16 +295,16 @@ for x in sorted(os.listdir(test_dir)):
         new_deadLock = []
         for i in range(height_map):
             for j in range(width_map):
-                if Vector([i, j]) in inputSwitch[fileName]:
+                if Vector([i, j]) in Input.inputSwitch[fileName]:
                     continue
                 myDirection = [Direction.Up,  Direction.Left, Direction.Down, Direction.Right]
-                wall_near = [is_deadLock(fileName, Vector([i, j]) + direct.value) for direct in myDirection]
+                wall_near = [Input.is_deadLock(fileName, Vector([i, j]) + direct.value) for direct in myDirection]
                 for k in range(4):
                     if wall_near[k] and wall_near[k - 1]:
                         new_deadLock.append((i, j))
                         break
         for i, j in new_deadLock:
-            deadLock[fileName][i][j] = True
+            Input.deadLock[fileName][i][j] = True
 
         # x in the below sample is a near-wall deadLock:
         #   #   #
@@ -305,14 +320,14 @@ for x in sorted(os.listdir(test_dir)):
         for i in range(height_map):
             for j in range(width_map):
                 vec = Vector([i, j])
-                if is_deadLock(fileName, vec):
+                if Input.is_deadLock(fileName, vec):
                     continue
                 for direct_move_base, direct_wall in direct_move_wall:
                     border = []
                     for direct_move in [Vector([0, 0]) - direct_move_base, direct_move_base]:
                         cur = vec
                         while 0 <= cur[0] and cur[0] < height_map and 0 <= cur[1] and cur[1] < width_map:
-                            if is_deadLock(fileName, cur):
+                            if Input.is_deadLock(fileName, cur):
                                 border.append(cur)
                                 break
                             cur += direct_move
@@ -322,7 +337,7 @@ for x in sorted(os.listdir(test_dir)):
                     flag = True
                     cur = border[0] + direct_move_base
                     while cur != border[1]:
-                        if cur in inputSwitch[fileName] or not is_deadLock(fileName, cur + direct_wall):
+                        if cur in Input.inputSwitch[fileName] or not Input.is_deadLock(fileName, cur + direct_wall):
                             flag = False
                             break
                         cur += direct_wall
@@ -332,7 +347,7 @@ for x in sorted(os.listdir(test_dir)):
                             new_deadLock.append(cur)
                             cur += direct_wall
         for i, j in new_deadLock:
-            deadLock[fileName][i][j] = True
+            Input.deadLock[fileName][i][j] = True
 
         # shortest_dist is the shortest distance between pairs non-wall cells
         # Beside walls, we will also block 1 cell
@@ -342,70 +357,50 @@ for x in sorted(os.listdir(test_dir)):
         
 
         # Compute shortest distances for all pairs of non-wall cells, taking into account blocking a single cell
-        shortest_dist[fileName] = {}
+        Input.shortest_dist[fileName] = {}
         directions = [Direction.Up, Direction.Left, Direction.Down, Direction.Right]
-        
-        def is_valid_cell(vec, blocked_vec=None):
-            """Checks if a cell is valid for traversal."""
-            if not is_movable_cell(fileName, vec):
-                #print(f"{vec} is not movable")
-                return False
-            if in_inputWall(fileName, vec) or (blocked_vec is not None and vec == blocked_vec):
-                return False
-            return True
-        
-        def bfs_shortest_path(start_vec, blocked_vec):
-            """Performs BFS to find the shortest path lengths from start_vec, considering blocked_vec."""
-            dist = {}
-            queue = Queue()
-            queue.put(start_vec)
-            dist[start_vec] = 0
-            
-            while not queue.empty():
-                current = queue.get()
-                for direction in directions:
-                    next_vec = current + direction.value
-                    if is_valid_cell(next_vec, blocked_vec) and next_vec not in dist:
-                        dist[next_vec] = dist[current] + 1
-                        queue.put(next_vec)
-            
-            return dist
         
         # Calculate shortest distances while considering each cell as blocked one by one
         for blocki in range(height_map):
             for blockj in range(width_map):
                 blocked_vec = Vector([blocki, blockj])
-                shortest_dist[fileName][blocked_vec] = {}
-                if not is_valid_cell(blocked_vec):
+                Input.shortest_dist[fileName][blocked_vec] = {}
+                if not Input.is_valid_cell(fileName, blocked_vec):
                     continue
                 for direction in directions:
                     start_vec = blocked_vec + direction.value
                 #print(f"Calculating shortest distances for {fileName} with blocked cell at ({i}, {j})")
-                    if not is_valid_cell(start_vec):
+                    if not Input.is_valid_cell(fileName, start_vec):
                         continue
-                    dist = bfs_shortest_path(start_vec, blocked_vec)
-                    shortest_dist[fileName][blocked_vec][start_vec] = dist
+                    dist = Input.bfs_shortest_path(fileName, start_vec, blocked_vec)
+                    Input.shortest_dist[fileName][blocked_vec][start_vec] = dist
+
+class Direction(Enum):
+    Up = Vector([-1, 0])
+    Left = Vector([0, -1])
+    Down = Vector([1, 0])
+    Right = Vector([0, 1])
 
 def get_shortest_dist(fileName, blocked_vec, start_vec, end_vec):
     # print(f"Finding shortest distance from {start_vec} to {end_vec} in {fileName} with blocked cell at {blocked_vec}")
     # Check if the input is valid
-    if (fileName not in shortest_dist):
+    if (fileName not in Input.shortest_dist):
         # print(f"File not found in shortest distances: {fileName}")
         return float('inf')
-    if blocked_vec not in shortest_dist[fileName]:
+    if blocked_vec not in Input.shortest_dist[fileName]:
         # print(f"Blocked vector not found in shortest distances: {blocked_vec}")
         return float('inf')
-    if start_vec not in shortest_dist[fileName][blocked_vec]:
+    if start_vec not in Input.shortest_dist[fileName][blocked_vec]:
         # print(f"Start vector not found in shortest distances: {start_vec}")
         return float('inf')
     
     # Check if the end vector is in the computed distances
-    if end_vec not in shortest_dist[fileName][blocked_vec][start_vec]:
+    if end_vec not in Input.shortest_dist[fileName][blocked_vec][start_vec]:
         # print(f"End vector not found in computed distances: {end_vec}")
         return float('inf')
     
     # Return the shortest distance from start to end
-    return shortest_dist[fileName][blocked_vec][start_vec][end_vec]
+    return Input.shortest_dist[fileName][blocked_vec][start_vec][end_vec]
             # print('------------')
 
 
@@ -429,7 +424,7 @@ def get_pushing_stone_cost(fileName, i, stone_pos, switch_pos, direction):
             return dist_list[fileName][i][stone_pos][switch_pos, direction]
         else:
             return float('inf')
-    for id, _w in enumerate(inputStone[fileName].values()):
+    for id, _w in enumerate(Input.inputStone[fileName].values()):
         if id == i:
             w = _w
     start_stone_pos = stone_pos
@@ -439,7 +434,7 @@ def get_pushing_stone_cost(fileName, i, stone_pos, switch_pos, direction):
     # Initialize with current stone position and all directions
     for direction in Direction:
         ares_pos = start_stone_pos - direction.value
-        if is_valid_cell(ares_pos):
+        if Input.is_valid_cell(fileName, ares_pos):
             queue.put(PrioritizedItem(0, (start_stone_pos, direction)))
             dist_list[fileName][i][start_stone_pos][start_stone_pos, direction] = 0
     #print(f"Calculating distances for {fileName} with stone {i} at {start_stone_pos}")
@@ -455,7 +450,7 @@ def get_pushing_stone_cost(fileName, i, stone_pos, switch_pos, direction):
             next_stone_pos = current_stone_pos + new_direction.value
             next_ares_pos = current_stone_pos - new_direction.value
             #print(f"{is_valid_cell(next_stone_pos)}, {is_valid_cell(next_ares_pos)}")
-            if (is_valid_cell(next_stone_pos) and is_valid_cell(next_ares_pos)):
+            if (Input.is_valid_cell(fileName, next_stone_pos) and Input.is_valid_cell(fileName, next_ares_pos)):
                 ares_move_cost = get_shortest_dist(fileName, current_stone_pos, ares_pos, next_ares_pos)
                 # print(f"Attempting next_stone_pos: {next_stone_pos}, new_direction: {new_direction} next_ares_pos: {next_ares_pos} ares_pos: {ares_pos} -> ares_next_pos: {next_ares_pos} ares_move_cost: {ares_move_cost}")
                 if ares_move_cost == float('inf'):
@@ -491,7 +486,7 @@ class State:
         return res
     
     def isGoal(self):
-        for switch in inputSwitch[self.name]:
+        for switch in Input.inputSwitch[self.name]:
             if (switch not in self.stones):
                 return False
         return True
@@ -506,7 +501,7 @@ class State:
             return result
 
     def neighbor(self, stone, enum):
-        if ((stone + enum) in self.stones or in_inputWall(self.name, stone + enum) or (stone - enum) not in self.reached):
+        if ((stone + enum) in self.stones or Input.in_inputWall(self.name, stone + enum) or (stone - enum) not in self.reached):
             return NULL
         newStateStones = self.stones.copy()
         newStateStones.pop(stone)
@@ -536,7 +531,7 @@ class State:
         while not queue.empty():
             top = queue.get()
             for direct in Direction:
-                if ((space:=(top.item + direct.value)) in self.stones or in_inputWall(self.name, space)):
+                if ((space:=(top.item + direct.value)) in self.stones or Input.in_inputWall(self.name, space)):
                     continue
                 if space not in self.reached or len(self.reached[space]) > len(top.priority) + 1:
                     self.reached[space] = (prio:=(top.priority + str(direct)[10].lower()))
@@ -545,7 +540,7 @@ class State:
         #print("Check reached done. Time taken: ", end - start)
 
     def heuristic(self):
-        n = len(inputSwitch[self.name])
+        n = len(Input.inputSwitch[self.name])
         total_cost = 0
 
         # Calculate minimum cost to match all stones to the switches
@@ -553,7 +548,7 @@ class State:
         #print('------------------')
         hungarian = Hungarian(n)
         for i, (stone_pos, w) in enumerate(self.stones.items()):  # Iterate over stones
-            for j, switch_pos in enumerate(inputSwitch[self.name]):  # Iterate over switches
+            for j, switch_pos in enumerate(Input.inputSwitch[self.name]):  # Iterate over switches
                 min_cost = float('inf')
                 for direction in Direction:
                     min_cost = min(min_cost, get_pushing_stone_cost(self.name, i, stone_pos, switch_pos, direction))
@@ -625,7 +620,7 @@ class SearchNode:
         return parent.reverseNeighbor(enum)
             
 #@profile
-class SolverBFS:
+class Solver():
     def __init__(self, state):
         self.rootNode = SearchNode(state, NULL, 0, '')
         self.reached = {}
@@ -633,9 +628,11 @@ class SolverBFS:
         self.node_number = 0
 
         self.priorityQueue = PriorityQueue()
-        self.priorityQueue.put(PrioritizedItem(self.rootNode.priority_value(), self.rootNode))
-
     def expand(self):
+        raise NotImplementedError("Subclasses must implement this method")
+class SolverA(Solver):
+    def expand(self):
+        self.priorityQueue.put(PrioritizedItem(self.rootNode.priority_value(), self.rootNode))
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
             self.node_number += 1
@@ -645,33 +642,53 @@ class SolverBFS:
             #   print(top.path)    
             for child in top.children():
                 if (child.state.isGoal()):
-                    #child.printTree()
-                    print(child.path)
-                    print("Node: ", self.node_number)
-                    print("Cost: ", child.cost) 
-                    return
+                    return (child, self.node_number)
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
                     self.priorityQueue.put(PrioritizedItem(child.priority_value(), child))
         print("FAILURE")
-
+class SolverBFS(Solver):
+    def expand(self):
+        self.priorityQueue.put(PrioritizedItem(self.rootNode.cost, self.rootNode))
+        while (not self.priorityQueue.empty()):
+            top = self.priorityQueue.get().getItem()
+            self.node_number += 1
+            if (self.node_number % 100 != 0): 
+                print ("\033[A                             \033[A")
+                print(self.node_number)
+            #   print(top.path)    
+            for child in top.children():
+                if (child.state.isGoal()):
+                    return (child, self.node_number)
+                if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
+                    self.reached[str(child.state)] = child.cost
+                    self.priorityQueue.put(PrioritizedItem(child.cost, child))
+        print("FAILURE")
+class SolverDFS(Solver):
+    def expand(self):
+        self.priorityQueue.put(PrioritizedItem(-self.rootNode.cost, self.rootNode))
+        while (not self.priorityQueue.empty()):
+            top = self.priorityQueue.get().getItem()
+            self.node_number += 1
+            if (self.node_number % 100 != 0): 
+                print ("\033[A                             \033[A")
+                print(self.node_number)
+            #   print(top.path)    
+            for child in top.children():
+                if (child.state.isGoal()):
+                    return (child, self.node_number)
+                if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
+                    self.reached[str(child.state)] = child.cost
+                    self.priorityQueue.put(PrioritizedItem(-child.cost, child))
+        print("FAILURE")
 class SolverUCS:
-    def __init__(self, state):
-        self.rootNode = SearchNode(state, NULL, 0, '')
-        self.reached = {}
-        self.reached[str(state)] = 0
-        self.node_number = 0
-        self.priorityQueue = PriorityQueue()
+    def expand(self):
         self.priorityQueue.put(PrioritizedItem(self.rootNode.cost, self.rootNode))
 
-    def expand(self):
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
             if (top.state.isGoal()):
-                #top.printTree()
-                print(top.path)
-                print("Node: ", self.node_number)
-                return
+                return (top, self.node_number)
             print ("\033[A                             \033[A")
             self.node_number += 1
             print(self.node_number)
@@ -681,15 +698,47 @@ class SolverUCS:
                     self.priorityQueue.put(PrioritizedItem(child.cost, child))
         print("FAILURE")
 
-for fileName in fileNames:
-    solver = SolverBFS(State(fileName, inputAres[fileName], inputStone[fileName]))
-    solver.expand()
+def output_result(result, fileName):
+    with open('./Output/' + fileName[:-4] + '.txt', 'w') as f:
+        f.write(input_type + '\n')
+        f.write('Node: ' + str(result[1]) + '\n')
+        f.write('Path: ' + result[0].path + '\n')
+        f.write('Time taken: ' + str(time_end - time_start) + '\n')
+        f.write(f"Current memory usage: {current / 10**6:.2f} MB\n")
+        f.write(f"Peak memory usage: {peak / 10**6:.2f} MB\n")
+
+import time
+time_start = time.time()
+input_file = ['demo.txt']
+if len(sys.argv) > 1:
+    input_file = sys.argv[1]
+    input_type = sys.argv[2]
+else:
+    raise TypeError("Not providing shit")
+
+Input.readFile(input_file)
+start_state = State(input_file, Input.inputAres[input_file], Input.inputStone[input_file])
+if (input_type == 'BFS'):
+    solver = SolverBFS(start_state)
+elif (input_type == 'DFS'):
+    solver = SolverDFS(start_state)
+elif (input_type == 'A*'):
+    solver = SolverA(start_state)
+elif (input_type == 'UCS'):
+    solver = SolverUCS(start_state)
+result = solver.expand()
+
 time_end = time.time()
+
+
+
 print('time cost', time_end-time_start)
 current, peak = tracemalloc.get_traced_memory()
 
 print(f"Current memory usage: {current / 10**6:.2f} MB")
 print(f"Peak memory usage: {peak / 10**6:.2f} MB")
+
+output_result(result, input_file)
 
 # Stop tracing memory allocation
 tracemalloc.stop()

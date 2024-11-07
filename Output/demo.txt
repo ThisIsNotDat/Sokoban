@@ -1,0 +1,6 @@
+BFS
+Node: 3605
+Path: uulDldRRRRRRRRlllluLLLulD
+Time taken: 23.218668460845947
+Current memory usage: 2.63 MB
+Peak memory usage: 2.68 MB
