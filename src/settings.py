@@ -1,0 +1,7 @@
+import pygame
+
+DESIRED_FPS = 30
+WIDTH = 1504
+HEIGHT = 800
+SCREENRECT = pygame.Rect(0, 0, WIDTH, HEIGHT)
+TILESIZE = 32

@@ -2,17 +2,29 @@
 import importlib.resources
 import pygame
 
+from src.settings import TILESIZE
+
 SPRITES = {
     "tileset": "tileset.png",
-    # "game_logo": "game_logo.png",
-    # "wall": "wall.png",
-    # "sokoban": "sokoban.png",
-    # "background": "background.png",
-    # "floor": "floor.png",
-    # "switch": "switch.png",
+    "peach": "peach.png",
 }
 
 IMAGE_SPRITES = {}
+
+MAP_SQUARES = {
+    'wall': 2,
+    'wall_bottom_left': 1,
+    'wall_bottom': 0,
+    'wall_bottom_paint': 7,
+    'target_unreached': 3,
+    'target_reached': 4,
+    'box': 20,
+    'water': 15,
+    'water_left': 16,
+    'grass': 5,
+    'grass_left': 6,
+}
+MAP_SPRITES = {}
 
 
 def load(module_path, name):
@@ -20,7 +32,7 @@ def load(module_path, name):
 
 
 def import_image(asset_name: str):
-    with load("sokoban.assets", asset_name) as resource:
+    with load("src.assets.images", asset_name) as resource:
         return pygame.image.load(resource).convert_alpha()
 
 
@@ -28,11 +40,19 @@ def import_image(asset_name: str):
 def load_sprites():
     for sprite_index, sprite_name in SPRITES.items():
         img = import_image(sprite_name)
+        print(f"Adding sprite: {sprite_index}")
         for flipped_x in (True, False):
             for flipped_y in (True, False):
                 new_img = pygame.transform.flip(
                     img, flip_x=flipped_x, flip_y=flipped_y)
+                print(f"Adding sprite: {flipped_x}, {
+                      flipped_y}, {sprite_index}")
                 IMAGE_SPRITES[(flipped_x, flipped_y, sprite_index)] = new_img
+
+    tiles = Tilesheet(
+        IMAGE_SPRITES[(False, False, "tileset")], TILESIZE, TILESIZE)
+    for sprite_name, sprite_index in MAP_SQUARES.items():
+        MAP_SPRITES[sprite_name] = tiles.get_tile(sprite_index)
 
 
 class Tilesheet:
@@ -42,6 +62,9 @@ class Tilesheet:
         self.tile_height = tile_height
         self.tiles = []
         self.load_tiles()
+
+    def size(self):
+        return len(self.tiles)
 
     def load_tiles(self):
         for y in range(0, self.image.get_height(), self.tile_height):
@@ -57,3 +80,7 @@ class Tilesheet:
 
     def get_tile_count(self):
         return len(self.tiles)
+
+    def draw(self, screen, index, x, y):
+        screen.blit(self.get_tile(index),
+                    (x * self.tile_width, y * self.tile_height))

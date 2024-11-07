@@ -1,4 +1,4 @@
-from sokoban.game import SokobanGame
+from src.game import SokobanGame
 
 
 def main():
