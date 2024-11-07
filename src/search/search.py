@@ -225,8 +225,8 @@ class Direction(Enum):
     Right = Vector([0, 1])
 
 
-test_dir = './TestCases/'
-test_list = ['input_1.txt']
+test_dir = '../../TestCases/'
+test_list = ['input_3.txt']
 for x in sorted(os.listdir(test_dir)):
     if x.endswith(".txt") and x in test_list:
         content = open(test_dir + x, 'r').read()

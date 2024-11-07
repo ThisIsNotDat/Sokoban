@@ -80,6 +80,7 @@ class Map():
                 elif tile == '+':
                     self.peach = Peach(x, y)
                     self.target_sprites.add(TargetSprite(x, y, False))
+        self.peach.load_actions("rrurruuurrDDRluulldRurrrdrddlUllU")
 
     def draw(self, screen):
         self.map_sprites.draw(screen)
@@ -142,31 +143,38 @@ class Peach(pygame.sprite.Sprite):
         self.tiles = Tilesheet(
             IMAGE_SPRITES[(False, False, 'peach')], TILESIZE, 40)
         self.tile_idx = 0
-        self.direction = 0  # 0: down, 1: right, 2: left, 3: up
+        self.direction = 0  # 0: down, 1: left, 2: right, 3: up
         self.image = self.tiles.get_tile(self.tile_idx)
         self.rect = self.image.get_rect()
         self.rect.x = x * TILESIZE
         self.rect.y = y * TILESIZE - TILESIZE // 2
-        self.speed = 2  # 1 tile per second = 32 pixels per second
+        self.speed = 1  # 1 tile per second = 32 pixels per second
         self.target_rect = self.rect
-        self.countdown = 2
         self.moved = (0, 0)
+        self.actions_buffer = []
+
+    def load_actions(self, actions):
+        for action in actions:
+            if action.lower() == 'u':
+                self.actions_buffer.append('up')
+            elif action.lower() == 'd':
+                self.actions_buffer.append('down')
+            elif action.lower() == 'l':
+                self.actions_buffer.append('left')
+            elif action.lower() == 'r':
+                self.actions_buffer.append('right')
 
     def update(self, dt):
-        self.countdown += dt
-        if self.countdown >= 2:
-            self.countdown = 0
-            self.move("down")
-
         new_rect = self.rect.move(self.moved)
         if new_rect.x == self.target_rect.x \
                 and new_rect.y == self.target_rect.y:
-            if self.moved == (0, 0):
-                return
-            self.tile_idx = self.stand_still()
-            self.image = self.tiles.get_tile(self.tile_idx)
-            self.rect = self.target_rect
-            self.moved = (0, 0)
+            if self.moved != (0, 0):
+                self.rect = self.target_rect
+                self.tile_idx = self.stand_still()
+                self.image = self.tiles.get_tile(self.tile_idx)
+                self.moved = (0, 0)
+            elif self.actions_buffer:
+                self.move(self.actions_buffer.pop(0))
             # print(f"stand still: {self.tile_idx}")
         else:
             old_moved = self.moved
@@ -198,12 +206,12 @@ class Peach(pygame.sprite.Sprite):
         if direction == "down":
             self.direction = 0
             self.target_rect = self.rect.move(0, TILESIZE)
-        elif direction == "right":
-            self.direction = 1
-            self.target_rect = self.rect.move(TILESIZE, 0)
         elif direction == "left":
-            self.direction = 2
+            self.direction = 1
             self.target_rect = self.rect.move(-TILESIZE, 0)
+        elif direction == "right":
+            self.direction = 2
+            self.target_rect = self.rect.move(TILESIZE, 0)
         else:
             self.direction = 3
             self.target_rect = self.rect.move(0, -TILESIZE)
