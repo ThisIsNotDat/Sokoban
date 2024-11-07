@@ -7,6 +7,7 @@ from queue import PriorityQueue
 from queue import Queue
 from typing import Tuple
 import tracemalloc
+from itertools import permutations
 #from memory_profiler import profile
 
 tracemalloc.start()
@@ -155,6 +156,9 @@ class Hungarian:
             self.mX[i] = self.finish
             self.mY[self.finish] = i
             self.finish = nxt
+
+    def get_trace(self):
+        return self.mX
 
 
 class PrioritizedItem:
@@ -378,8 +382,9 @@ for x in sorted(os.listdir(test_dir)):
                         continue
                     dist = bfs_shortest_path(start_vec, blocked_vec)
                     shortest_dist[fileName][blocked_vec][start_vec] = dist
+                shortest_dist[fileName][blocked_vec][blocked_vec] = bfs_shortest_path(blocked_vec, None)
 
-def get_shortest_dist(fileName, blocked_vec, start_vec, end_vec):
+def get_shortest_dist_with_block(fileName, blocked_vec, start_vec, end_vec):
     # print(f"Finding shortest distance from {start_vec} to {end_vec} in {fileName} with blocked cell at {blocked_vec}")
     # Check if the input is valid
     if (fileName not in shortest_dist):
@@ -401,6 +406,20 @@ def get_shortest_dist(fileName, blocked_vec, start_vec, end_vec):
     return shortest_dist[fileName][blocked_vec][start_vec][end_vec]
             # print('------------')
 
+def get_shortest_dist(fileName, start_vec, end_vec):
+    # the same with get_shortest_dist_with_block(fileName, start_vec, start_vec, end_vec)
+    # Check if the input is valid
+    if (fileName not in shortest_dist):
+        return float('inf')
+    if start_vec not in shortest_dist[fileName]:
+        return float('inf')
+    if start_vec not in shortest_dist[fileName][start_vec]:
+        return float('inf')
+    if end_vec not in shortest_dist[fileName][start_vec][start_vec]:
+        return float('inf')
+    
+    # Return the shortest distance from start to end
+    return shortest_dist[fileName][start_vec][start_vec][end_vec]
 
 
 # Complete execution or integration logic can be added here
@@ -449,7 +468,7 @@ def get_pushing_stone_cost(fileName, i, stone_pos, switch_pos, direction):
             next_ares_pos = current_stone_pos - new_direction.value
             #print(f"{is_valid_cell(next_stone_pos)}, {is_valid_cell(next_ares_pos)}")
             if (is_valid_cell(next_stone_pos) and is_valid_cell(next_ares_pos)):
-                ares_move_cost = get_shortest_dist(fileName, current_stone_pos, ares_pos, next_ares_pos)
+                ares_move_cost = get_shortest_dist_with_block(fileName, current_stone_pos, ares_pos, next_ares_pos)
                 # print(f"Attempting next_stone_pos: {next_stone_pos}, new_direction: {new_direction} next_ares_pos: {next_ares_pos} ares_pos: {ares_pos} -> ares_next_pos: {next_ares_pos} ares_move_cost: {ares_move_cost}")
                 if ares_move_cost == float('inf'):
                     continue
@@ -518,6 +537,25 @@ class State:
         if (self.ares + enum) in self.stones.keys() and (self.ares + 2*enum) not in self.stones.keys() and not in_inputWall(self.name, self.ares + 2*enum):
             return self.stones[self.ares + enum] + 1
         return 1
+    
+    def calculate_intermediate_ares_move(self, matching, stones, switches, chosen_direction, initial_ares_pos):
+        total_cost = get_shortest_dist(self.name, initial_ares_pos, stones[0])
+        if total_cost == float('inf'):
+            return float('inf')
+        for stone_id in range(len(stones) - 1):
+            min_cost = float('inf')
+            for direction in chosen_direction[(stone_id, matching[stone_id])]:
+                switch_pos = switches[matching[stone_id]]
+                cur_ares_pos = switch_pos - direction.value
+                next_ares_pos = stones[stone_id + 1]
+                ares_move_cost = get_shortest_dist_with_block(self.name, switch_pos, cur_ares_pos, next_ares_pos)
+                if ares_move_cost == float('inf'):
+                    continue
+                min_cost = min(min_cost, ares_move_cost)
+            if min_cost == float('inf'):
+                return float('inf')
+            total_cost += min_cost
+        return total_cost
 
     def heuristic(self):
         n = len(inputSwitch[self.name])
@@ -527,34 +565,48 @@ class State:
         # using Hungarian algorithm and Manhattan distance
         #print('------------------')
         hungarian = Hungarian(n)
+        chosen_direction = {}
         for i, (stone_pos, w) in enumerate(self.stones.items()):  # Iterate over stones
             for j, switch_pos in enumerate(inputSwitch[self.name]):  # Iterate over switches
                 min_cost = float('inf')
                 for direction in Direction:
-                    min_cost = min(min_cost, get_pushing_stone_cost(self.name, i, stone_pos, switch_pos, direction))
-                if min_cost != float('inf'):
-                    
+                    cur_cost = get_pushing_stone_cost(self.name, i, stone_pos, switch_pos, direction)
+                    if (cur_cost < min_cost):
+                        min_cost = cur_cost
+                    if (cur_cost == min_cost):
+                        if ((i, j) not in chosen_direction):
+                            chosen_direction[(i, j)] = []
+                        chosen_direction[(i, j)].append(direction)
+                if min_cost != float('inf'):                    
                     hungarian.add_edge(i, j, min_cost)
 
             #total_cost += min_cost
         total_cost += hungarian.solve()
 
-        # # Distance from player to the nearest stone
-        # total_cost += min([get_shortest_dist(self.name, None, self.ares, stone_pos) for stone_pos in self.stones.keys()])
+        matchings = hungarian.get_trace()
+        for i, j in enumerate(matchings):
+            if (j == -1):
+                total_cost = float('inf')
+                return total_cost
+        # Loop through all permutations of stones, ares will need to move from current position to the stone
+        # push the stone to the switch, and then move to the next stone
+        # total_cost have added the cost of pushing stone
+        # Only need to add the cost of moving ares to the stone and moving ares to the switch
+        print('-------------')
+        print(f"Matchings: {matchings} total_cost: {total_cost}")
+        stones = list(self.stones.keys())
+        
+        min_intermediate_cost = float('inf')
+        for perm in permutations(matchings):
+            min_intermediate_cost = min(min_intermediate_cost, self.calculate_intermediate_ares_move(perm, stones, inputSwitch[self.name], chosen_direction, self.ares))
+        if min_intermediate_cost == float('inf'):
+            return float('inf')
+        total_cost += min_intermediate_cost
+                
 
-        # # Penalty for deadlock
-        # for (stone_pos, w) in self.stones.items():
-        #     # Penalty +infinity if stone in corner and not on a switch
-        #     if is_deadLock(self.name, stone_pos) and stone_pos not in inputSwitch[self.name]:
-        #         total_cost += float('inf')
-        #     ## Penalty +infinity if 2 stones are adjacent and are not on switches and cannot be moved
-        #     f = stone_pos in inputSwitch[self.name]
-        #     for stone_pos2 in self.stones.keys():
-        #         vec_dist = stone_pos - stone_pos2
-        #         if vec_dist.magnitude_square() == 1 and (not f or stone_pos2 not in inputSwitch[self.name]):
-        #             direction = Vector([vec_dist[1], vec_dist[0]])
-        #             if (in_inputWall(self.name, stone_pos + direction) or in_inputWall(self.name, stone_pos - direction)) and (in_inputWall(self.name, stone_pos2 + direction) or in_inputWall(self.name, stone_pos2 - direction)):
-        #                 total_cost += float('inf')
+        # We loop through all permutation of stones and 
+
+        print("Done")
 
         return total_cost
 
