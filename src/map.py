@@ -12,10 +12,12 @@ class Map():
         self.padding_map()
         self.load_map_sprites()
         self.playing = False
+        self.moves = ""
 
     def load_moves(self, moves):
         assert self.peach is not None, "Peach not found"
         self.peach.load_actions(moves)
+        self.moves = moves
 
     def padding_map(self):
         self.padding_left = (WIDTH - self.width * TILESIZE) // TILESIZE // 2
@@ -88,6 +90,7 @@ class Map():
 
     def reset(self):
         self.load_map_sprites()
+        self.load_moves(self.moves)
         self.playing = False
 
     def draw(self, screen):
@@ -317,7 +320,11 @@ class Peach(pygame.sprite.Sprite):
 
     def check_box_collision(self, map):
         for box in map.box_sprites:
-            if pygame.sprite.collide_rect(self, box):
+            if self.collision_box().colliderect(box.rect):
                 if self.pushing and box.velocity == (0, 0):
                     box.move(self.direction)
                     break
+
+    def collision_box(self):
+        return pygame.Rect(self.rect.x, self.rect.y + TILESIZE // 2,
+                           TILESIZE, TILESIZE)
