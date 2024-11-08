@@ -85,6 +85,7 @@ class Map():
 
     def reset(self):
         self.load_map_sprites()
+        self.playing = False
 
     def draw(self, screen):
         self.map_sprites.draw(screen)
@@ -152,7 +153,7 @@ class BoxSprite(MapBlock):
 
     def update(self, map, dt):
         assert not self.collision(map)
-        if self.velocity:
+        if self.velocity != (0, 0):
             self.countdown -= dt
 
         if self.countdown <= 0:
@@ -208,7 +209,7 @@ class Peach(pygame.sprite.Sprite):
         super().__init__()
         self.tiles = Tilesheet(
             IMAGE_SPRITES[(False, False, 'peach')], TILESIZE, 40)
-        self.tile_idx = 0
+        self.tile_idx = 1
         self.direction = "down"
         self.image = self.tiles.get_tile(self.tile_idx)
         self.rect = self.image.get_rect()
@@ -237,13 +238,11 @@ class Peach(pygame.sprite.Sprite):
         if self.velocity:
             self.countdown -= dt
             self.animation_dt += dt
-        if self.velocity != (0, 0):
-            self.move_and_change_tile(dt)
-        if self.countdown < 0:
-            print(f"Reset and next action {self.rect} {
-                  self.target_rect} {self.countdown}s")
+        if self.countdown <= 0:
             self.reset_and_next_action()
-        self.check_box_collision(map)
+        elif self.velocity != (0, 0):
+            self.move_and_change_tile(dt)
+            self.check_box_collision(map)
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
@@ -298,11 +297,12 @@ class Peach(pygame.sprite.Sprite):
     def reset_and_next_action(self):
         self.countdown = self.speed
         self.rect = self.target_rect
-        self.tile_idx = self.stand_still()
-        self.image = self.tiles.get_tile(self.tile_idx)
-        self.velocity = (0, 0)
         if len(self.actions_buffer) > 0:
             self.move(self.actions_buffer.pop(0))
+        else:
+            self.tile_idx = self.stand_still()
+            self.image = self.tiles.get_tile(self.tile_idx)
+            self.velocity = (0, 0)
 
     def move_and_change_tile(self, dt):
         self.rect = self.rect.move(self.velocity[0] * dt,
