@@ -47,6 +47,7 @@ class Map():
 
     def load_map_sprites(self):
         self.map_sprites = pygame.sprite.LayeredUpdates()
+        self.non_water_sprites = pygame.sprite.Group()
         self.target_sprites = pygame.sprite.Group()
         self.box_sprites = pygame.sprite.Group()
         self.peach = None
@@ -54,26 +55,28 @@ class Map():
             for x, tile in enumerate(row):
                 if tile == '#':
                     if y < self.height-1 and self.map[y+1][x] == '#':
-                        self.map_sprites.add(MapBlock(x, y, 'wall'))
+                        wall = MapBlock(x, y, 'wall')
                     elif x < self.width-1 and y < self.height-1 \
                             and self.map[y][x+1] == '#' \
                             and self.map[y+1][x+1] == '#':
-                        self.map_sprites.add(
-                            MapBlock(x, y, 'wall_bottom_left'))
+                        wall = MapBlock(x, y, 'wall_bottom_left')
                     else:
                         if self.my_random(x, y, 7) < 4:
-                            self.map_sprites.add(MapBlock(x, y, 'wall_bottom'))
+                            wall = MapBlock(x, y, 'wall_bottom')
                         else:
-                            self.map_sprites.add(
-                                MapBlock(x, y, 'wall_bottom_paint'))
+                            wall = MapBlock(x, y, 'wall_bottom_paint')
+                    self.map_sprites.add(wall)
+                    self.non_water_sprites.add(wall)
                 elif y >= self.padding_top \
                         and y < self.height-self.padding_bottom \
                         and x >= self.padding_left \
                         and x < self.width-self.padding_right:
                     if x < self.height-1 and self.map[y][x+1] == '#':
-                        self.map_sprites.add(MapBlock(x, y, 'grass_left'))
+                        grass = MapBlock(x, y, 'grass_left')
                     else:
-                        self.map_sprites.add(MapBlock(x, y, 'grass'))
+                        grass = MapBlock(x, y, 'grass')
+                    self.map_sprites.add(grass)
+                    self.non_water_sprites.add(grass)
                 else:
                     if y > 0 and self.in_grass_zone(x, y-1):
                         self.map_sprites.add(MapBlock(x, y, 'water_top_grass'))
@@ -113,8 +116,15 @@ class Map():
         self.load_moves(self.moves)
         self.playing = False
 
-    def draw(self, screen):
-        self.map_sprites.draw(screen)
+    def draw(self, screen, full=False):
+        if full:
+            screen.fill((0, 0, 0))
+            self.map_sprites.draw(screen)
+        else:
+            self.non_water_sprites.draw(screen)
+            self.target_sprites.draw(screen)
+            self.box_sprites.draw(screen)
+            self.peach.draw(screen)
 
     def update(self, events, dt):
         for event in events:

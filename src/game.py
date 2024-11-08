@@ -45,14 +45,7 @@ class SokobanGame:
                 self.state.load_map("TestCases/microban_20.txt")
             self.state.enter_state()
 
-    def update(self, events, dt):
-        is_quitting = False
-        for event in events:
-            if event.type == pygame.QUIT:
-                self.state.next_state = StateList.quitting
-                is_quitting = True
-        if not is_quitting:
-            self.state.update(events, dt)
+    def update(self):
         self.change_state()
 
     def draw(self):
@@ -71,21 +64,9 @@ class SokobanGame:
             )
 
     def loop(self):
-        clock = pygame.time.Clock()
-        while True:
-            # Calculate delta time in seconds
-            delta_time = clock.tick(DESIRED_FPS) / 1000.0
-            while delta_time - SECOND_PER_FRAME > 0:
-                events = pygame.event.get()
-                # Pass delta time to update method
-                self.update(events, SECOND_PER_FRAME)
-                delta_time -= SECOND_PER_FRAME
-            self.screen.fill((0, 0, 0))  # Clear the screen
-            if self.is_quitting():
-                break
-            self.draw()
-            pygame.display.set_caption(f"Sokoban - FPS: {clock.get_fps()}")
-            pygame.display.flip()
+        while not self.is_quitting():
+            self.update()
+            self.state.loop(self.screen)
         self.quit()
 
     def quit(self):

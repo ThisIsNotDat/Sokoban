@@ -6,6 +6,7 @@ import logging
 import json
 
 from src.map import Map
+from src.settings import DESIRED_FPS, SECOND_PER_FRAME
 
 
 class StateList(enum.Enum):
@@ -35,7 +36,9 @@ class State:
 
     def update(self, events, dt):
         """Update the state based on input events and game logic."""
-        raise NotImplementedError
+        for event in events:
+            if event.type == pygame.QUIT:
+                self.next_state = StateList.quitting
 
     def draw(self, screen):
         """Draw the state to the screen."""
@@ -48,6 +51,22 @@ class State:
     def exit_state(self):
         """Optional: Clean up the state when exiting."""
         pass
+
+    def loop(self, screen):
+        """The main game loop. This is where the game logic is executed."""
+        clock = pygame.time.Clock()
+        while self.next_state is None:
+            # Calculate delta time in seconds
+            delta_time = clock.tick(DESIRED_FPS) / 1000.0
+            while delta_time - SECOND_PER_FRAME > 0:
+                events = pygame.event.get()
+                # Pass delta time to update method
+                self.update(events, SECOND_PER_FRAME)
+                delta_time -= SECOND_PER_FRAME
+            screen.fill((0, 0, 0))  # Clear the screen
+            self.draw(screen)
+            pygame.display.set_caption(f"Sokoban - FPS: {clock.get_fps()}")
+            pygame.display.flip()
 
 
 class MainMenu(State):
@@ -99,7 +118,6 @@ class GamePlay(State):
         self.map.update(events, dt)
 
     def draw(self, screen):
-        screen.fill((240, 165, 59))
         # pygame.display.set_caption("Sokoban - Visualization")
         self.map.draw(screen)
 
@@ -113,6 +131,22 @@ class GamePlay(State):
             data = json.load(f)
             self.map.load_moves(data["node"])
             print("Solution:", data["node"])
+
+    def loop(self, screen):
+        """The main game loop. This is where the game logic is executed."""
+        clock = pygame.time.Clock()
+        self.map.draw(screen, full=True)
+        while self.next_state is None:
+            # Calculate delta time in seconds
+            delta_time = clock.tick(DESIRED_FPS) / 1000.0
+            while delta_time - SECOND_PER_FRAME > 0:
+                events = pygame.event.get()
+                # Pass delta time to update method
+                self.update(events, SECOND_PER_FRAME)
+                delta_time -= SECOND_PER_FRAME
+            self.draw(screen)
+            pygame.display.set_caption(f"Sokoban - FPS: {clock.get_fps()}")
+            pygame.display.flip()
 
 
 class Initializing(State):
