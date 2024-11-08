@@ -1,7 +1,7 @@
 import pygame.sprite
 
 from src.sprites import IMAGE_SPRITES, MAP_SPRITES, Tilesheet
-from src.settings import WIDTH, HEIGHT, TILESIZE
+from src.settings import WIDTH, HEIGHT, TILESIZE, ANIMATION_SPEED
 
 
 class Map():
@@ -95,7 +95,7 @@ class Map():
     def update(self, events, dt):
         self.map_sprites.update(self)
         self.target_sprites.update(self)
-        self.box_sprites.update(self)
+        self.box_sprites.update(self, dt)
         self.peach.update(dt)
         for target in self.target_sprites:
             target.set_reached(False)
@@ -117,11 +117,58 @@ class MapBlock(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x*TILESIZE
         self.rect.y = y*TILESIZE
+        self._name = block_name
+
+    @property
+    def name(self):
+        return self._name
 
 
 class BoxSprite(MapBlock):
     def __init__(self, x, y):
         super().__init__(x, y, 'box')
+        self.rect.x = x * TILESIZE
+        self.rect.y = y * TILESIZE
+        self.target_rect = self.rect
+        self.speed = ANIMATION_SPEED  # second per animation
+        self.velocity = (0, 0)  # pixel per second
+        self.countdown = self.speed
+
+    def update(self, map, dt):
+        # assert not self.collision(map)
+        self.countdown -= dt
+        print(f"countdown: {self.countdown}")
+        if self.countdown <= 0:
+            self.countdown = self.speed
+            self.rect = self.target_rect
+            self.velocity = (0, 0)
+            self.move('down')
+        else:
+            self.rect = self.rect.move(self.velocity[0] * dt,
+                                       self.velocity[1] * dt)
+
+    def move(self, direction):
+        if direction == 'up':
+            self.target_rect = self.rect.move(0, -TILESIZE)
+        elif direction == 'down':
+            self.target_rect = self.rect.move(0, TILESIZE)
+        elif direction == 'left':
+            self.target_rect = self.rect.move(-TILESIZE, 0)
+        else:
+            self.target_rect = self.rect.move(TILESIZE, 0)
+        self.velocity = ((self.target_rect.x - self.rect.x) / self.speed,
+                         (self.target_rect.y - self.rect.y) / self.speed)
+
+    def collision(self, map):
+        for block in map.map_sprites:
+            if block.name.startswith("wall") \
+                    and pygame.sprite.collide_rect(self, block):
+                return True
+
+        for box in map.box_sprites:
+            if box != self and pygame.sprite.collide_rect(self, box):
+                return True
+        return False
 
 
 class TargetSprite(MapBlock):
@@ -148,7 +195,7 @@ class Peach(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x * TILESIZE
         self.rect.y = y * TILESIZE - TILESIZE // 2
-        self.speed = 1  # 1 tile per second = 32 pixels per second
+        self.speed = ANIMATION_SPEED  # 1 tile per second = 32 pixels per second
         self.target_rect = self.rect
         self.moved = (0, 0)
         self.actions_buffer = []
@@ -156,13 +203,13 @@ class Peach(pygame.sprite.Sprite):
     def load_actions(self, actions):
         for action in actions:
             if action.lower() == 'u':
-                self.actions_buffer.append('up')
+                self.actions_buffer.append(('up', action.isupper()))
             elif action.lower() == 'd':
-                self.actions_buffer.append('down')
+                self.actions_buffer.append(('down', action.isupper()))
             elif action.lower() == 'l':
-                self.actions_buffer.append('left')
+                self.actions_buffer.append(('left', action.isupper()))
             elif action.lower() == 'r':
-                self.actions_buffer.append('right')
+                self.actions_buffer.append(('right', action.isupper()))
 
     def update(self, dt):
         new_rect = self.rect.move(self.moved)
@@ -203,13 +250,14 @@ class Peach(pygame.sprite.Sprite):
             return (tile_idx + 1) % 3 + 9
 
     def move(self, direction):
-        if direction == "down":
+        action, pushing = direction
+        if action == "down":
             self.direction = 0
             self.target_rect = self.rect.move(0, TILESIZE)
-        elif direction == "left":
+        elif action == "left":
             self.direction = 1
             self.target_rect = self.rect.move(-TILESIZE, 0)
-        elif direction == "right":
+        elif action == "right":
             self.direction = 2
             self.target_rect = self.rect.move(TILESIZE, 0)
         else:
@@ -227,3 +275,6 @@ class Peach(pygame.sprite.Sprite):
             return 7
         else:
             return 10
+
+    def is_moving(self):
+        return self.rect != self.target_rect
