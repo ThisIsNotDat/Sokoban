@@ -136,8 +136,9 @@ class BoxSprite(MapBlock):
 
     def update(self, map, dt):
         # assert not self.collision(map)
-        self.countdown -= dt
-        print(f"countdown: {self.countdown}")
+        if self.velocity:
+            self.countdown -= dt
+
         if self.countdown <= 0:
             self.countdown = self.speed
             self.rect = self.target_rect
@@ -148,6 +149,9 @@ class BoxSprite(MapBlock):
                                        self.velocity[1] * dt)
 
     def move(self, direction):
+        if self.velocity != (0, 0):
+            self.rect = self.target_rect
+
         if direction == 'up':
             self.target_rect = self.rect.move(0, -TILESIZE)
         elif direction == 'down':
@@ -197,7 +201,9 @@ class Peach(pygame.sprite.Sprite):
         self.rect.y = y * TILESIZE - TILESIZE // 2
         self.speed = ANIMATION_SPEED  # 1 tile per second = 32 pixels per second
         self.target_rect = self.rect
-        self.moved = (0, 0)
+        self.velocity = (0, 0)  # pixel per second
+        self.countdown = 0
+        self.animation_dt = 0
         self.actions_buffer = []
 
     def load_actions(self, actions):
@@ -212,32 +218,28 @@ class Peach(pygame.sprite.Sprite):
                 self.actions_buffer.append(('right', action.isupper()))
 
     def update(self, dt):
-        new_rect = self.rect.move(self.moved)
-        if new_rect.x == self.target_rect.x \
-                and new_rect.y == self.target_rect.y:
-            if self.moved != (0, 0):
-                self.rect = self.target_rect
-                self.tile_idx = self.stand_still()
-                self.image = self.tiles.get_tile(self.tile_idx)
-                self.moved = (0, 0)
-            elif self.actions_buffer:
+        if self.velocity:
+            self.countdown -= dt
+            self.animation_dt += dt
+        if self.countdown <= 0:
+            self.countdown = self.speed
+            self.rect = self.target_rect
+            self.tile_idx = self.stand_still()
+            self.image = self.tiles.get_tile(self.tile_idx)
+            self.velocity = (0, 0)
+            if len(self.actions_buffer) > 0:
                 self.move(self.actions_buffer.pop(0))
             # print(f"stand still: {self.tile_idx}")
-        else:
-            old_moved = self.moved
-            self.moved = (self.moved[0] +
-                          round((self.target_rect.x - self.rect.x)
-                                * self.speed * dt),
-                          self.moved[1] +
-                          round((self.target_rect.y - self.rect.y)
-                                * self.speed * dt))
-            if (old_moved[0] + old_moved[1]) // 4 \
-                    != (self.moved[0] + self.moved[1]) // 4:
+        elif self.velocity != (0, 0):
+            self.rect = self.rect.move(self.velocity[0] * dt,
+                                       self.velocity[1] * dt)
+            if self.animation_dt >= self.speed/5:
                 self.tile_idx = self.next_tile(self.direction, self.tile_idx)
                 self.image = self.tiles.get_tile(self.tile_idx)
+                self.animation_dt = 0
 
     def draw(self, screen):
-        screen.blit(self.image, self.rect.move(self.moved))
+        screen.blit(self.image, self.rect)
 
     def next_tile(self, direction, tile_idx):
         if direction == 0:
@@ -250,6 +252,9 @@ class Peach(pygame.sprite.Sprite):
             return (tile_idx + 1) % 3 + 9
 
     def move(self, direction):
+        if self.velocity != (0, 0):
+            self.rect = self.target_rect
+
         action, pushing = direction
         if action == "down":
             self.direction = 0
@@ -263,6 +268,8 @@ class Peach(pygame.sprite.Sprite):
         else:
             self.direction = 3
             self.target_rect = self.rect.move(0, -TILESIZE)
+        self.velocity = ((self.target_rect.x - self.rect.x) / self.speed,
+                         (self.target_rect.y - self.rect.y) / self.speed)
         self.tile_idx = self.next_tile(self.direction, self.tile_idx)
         self.image = self.tiles.get_tile(self.tile_idx)
 

@@ -1,6 +1,6 @@
 from src.sprites import load_sprites, SPRITES, IMAGE_SPRITES
 from dataclasses import dataclass, field
-from src.settings import SCREENRECT, DESIRED_FPS
+from src.settings import SCREENRECT, DESIRED_FPS, SECOND_PER_FRAME
 import pygame
 
 from src.state import State, StateList, StateError, MainMenu, GamePlay, \
@@ -76,7 +76,11 @@ class SokobanGame:
             # Calculate delta time in seconds
             delta_time = clock.tick(DESIRED_FPS) / 1000.0
             events = pygame.event.get()
-            self.update(events, delta_time)  # Pass delta time to update method
+            while delta_time - SECOND_PER_FRAME > 0:
+                # Pass delta time to update method
+                self.update(events, SECOND_PER_FRAME)
+                delta_time -= SECOND_PER_FRAME
+            self.update(events, delta_time)
             self.screen.fill((0, 0, 0))  # Clear the screen
             if self.is_quitting():
                 break

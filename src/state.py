@@ -53,7 +53,7 @@ class MainMenu(State):
 
     def update(self, events, dt):
         for event in events:
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RETURN:  # Start game on Enter
                     self.next_state = StateList.game_playing
 
