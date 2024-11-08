@@ -13,6 +13,10 @@ class Map():
         self.load_map_sprites()
         self.playing = False
 
+    def load_moves(self, moves):
+        assert self.peach is not None, "Peach not found"
+        self.peach.load_actions(moves)
+
     def padding_map(self):
         self.padding_left = (WIDTH - self.width * TILESIZE) // TILESIZE // 2
         self.padding_top = (HEIGHT - self.height * TILESIZE) // TILESIZE // 2
@@ -81,7 +85,6 @@ class Map():
                 elif tile == '+':
                     self.peach = Peach(x, y)
                     self.target_sprites.add(TargetSprite(x, y, False))
-        self.peach.load_actions("rrurruuurrDDRluulldRurrrdrddlUllU")
 
     def reset(self):
         self.load_map_sprites()
