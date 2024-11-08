@@ -112,7 +112,7 @@ class Map():
         self.map_sprites.update(self)
         self.target_sprites.update(self)
         self.box_sprites.update(self, dt)
-        self.peach.update(dt)
+        self.peach.update(self, dt)
         for target in self.target_sprites:
             target.set_reached(False)
             for box in self.box_sprites:
@@ -151,7 +151,7 @@ class BoxSprite(MapBlock):
         self.countdown = self.speed
 
     def update(self, map, dt):
-        # assert not self.collision(map)
+        assert not self.collision(map)
         if self.velocity:
             self.countdown -= dt
 
@@ -209,7 +209,7 @@ class Peach(pygame.sprite.Sprite):
         self.tiles = Tilesheet(
             IMAGE_SPRITES[(False, False, 'peach')], TILESIZE, 40)
         self.tile_idx = 0
-        self.direction = 0  # 0: down, 1: left, 2: right, 3: up
+        self.direction = "down"
         self.image = self.tiles.get_tile(self.tile_idx)
         self.rect = self.image.get_rect()
         self.rect.x = x * TILESIZE
@@ -233,37 +233,27 @@ class Peach(pygame.sprite.Sprite):
             elif action.lower() == 'r':
                 self.actions_buffer.append(('right', action.isupper()))
 
-    def update(self, dt):
+    def update(self, map, dt):
         if self.velocity:
             self.countdown -= dt
             self.animation_dt += dt
-        if self.countdown <= 0:
-            self.countdown = self.speed
-            self.rect = self.target_rect
-            self.tile_idx = self.stand_still()
-            self.image = self.tiles.get_tile(self.tile_idx)
-            self.velocity = (0, 0)
-            if len(self.actions_buffer) > 0:
-                self.move(self.actions_buffer.pop(0))
-            # print(f"stand still: {self.tile_idx}")
-        elif self.velocity != (0, 0):
-            self.rect = self.rect.move(self.velocity[0] * dt,
-                                       self.velocity[1] * dt)
-            if self.animation_dt >= self.speed/6:
-                print(f"{self.animation_dt} {self.speed/6}")
-                self.tile_idx = self.next_tile(self.direction, self.tile_idx)
-                self.image = self.tiles.get_tile(self.tile_idx)
-                self.animation_dt = 0
+        if self.velocity != (0, 0):
+            self.move_and_change_tile(dt)
+        if self.countdown < 0:
+            print(f"Reset and next action {self.rect} {
+                  self.target_rect} {self.countdown}s")
+            self.reset_and_next_action()
+        self.check_box_collision(map)
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
 
     def next_tile(self, direction, tile_idx):
-        if direction == 0:
+        if direction == "down":
             return (tile_idx + 1) % 3
-        elif direction == 1:
+        elif direction == "left":
             return (tile_idx + 1) % 3 + 3
-        elif direction == 2:
+        elif direction == "right":
             return (tile_idx + 1) % 3 + 6
         else:
             return (tile_idx + 1) % 3 + 9
@@ -273,17 +263,15 @@ class Peach(pygame.sprite.Sprite):
             self.rect = self.target_rect
 
         direction, pushing = action
+        self.direction = direction
+        self.pushing = pushing
         if direction == "down":
-            self.direction = 0
             self.target_rect = self.rect.move(0, TILESIZE)
         elif direction == "left":
-            self.direction = 1
             self.target_rect = self.rect.move(-TILESIZE, 0)
         elif direction == "right":
-            self.direction = 2
             self.target_rect = self.rect.move(TILESIZE, 0)
         else:
-            self.direction = 3
             self.target_rect = self.rect.move(0, -TILESIZE)
         if transition:
             self.velocity = ((self.target_rect.x - self.rect.x) / self.speed,
@@ -293,17 +281,40 @@ class Peach(pygame.sprite.Sprite):
             self.rect = self.target_rect
             self.tile_idx = self.stand_still()
         self.image = self.tiles.get_tile(self.tile_idx)
-        self.pushing = pushing
 
     def stand_still(self):
-        if self.direction == 0:
+        if self.direction == "down":
             return 1
-        elif self.direction == 1:
+        elif self.direction == "left":
             return 4
-        elif self.direction == 2:
+        elif self.direction == "right":
             return 7
         else:
             return 10
 
     def is_moving(self):
         return self.rect != self.target_rect
+
+    def reset_and_next_action(self):
+        self.countdown = self.speed
+        self.rect = self.target_rect
+        self.tile_idx = self.stand_still()
+        self.image = self.tiles.get_tile(self.tile_idx)
+        self.velocity = (0, 0)
+        if len(self.actions_buffer) > 0:
+            self.move(self.actions_buffer.pop(0))
+
+    def move_and_change_tile(self, dt):
+        self.rect = self.rect.move(self.velocity[0] * dt,
+                                   self.velocity[1] * dt)
+        if self.animation_dt >= self.speed/6:
+            self.tile_idx = self.next_tile(self.direction, self.tile_idx)
+            self.image = self.tiles.get_tile(self.tile_idx)
+            self.animation_dt = 0
+
+    def check_box_collision(self, map):
+        for box in map.box_sprites:
+            if pygame.sprite.collide_rect(self, box):
+                if self.pushing and box.velocity == (0, 0):
+                    box.move(self.direction)
+                    break
