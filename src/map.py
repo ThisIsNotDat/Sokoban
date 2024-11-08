@@ -1,7 +1,7 @@
 import pygame.sprite
 
 from src.sprites import IMAGE_SPRITES, MAP_SPRITES, Tilesheet
-from src.settings import WIDTH, HEIGHT, TILESIZE, ANIMATION_SPEED
+from src.settings import WIDTH, HEIGHT, TILESIZE, ANIMATION_SPEED, PEACH_HEIGHT
 
 
 class Map():
@@ -40,7 +40,7 @@ class Map():
         print(f"Map size: {self.width}x{self.height}")
 
     def load_map_sprites(self):
-        self.map_sprites = pygame.sprite.Group()
+        self.map_sprites = pygame.sprite.LayeredUpdates()
         self.target_sprites = pygame.sprite.Group()
         self.box_sprites = pygame.sprite.Group()
         self.peach = None
@@ -76,17 +76,29 @@ class Map():
         for y, row in enumerate(self.map):
             for x, tile in enumerate(row):
                 if tile == '$':
-                    self.box_sprites.add(BoxSprite(x, y))
+                    box_sprite = BoxSprite(x, y)
+                    self.box_sprites.add(box_sprite)
+                    self.map_sprites.add(box_sprite, layer=1)
                 elif tile == '.':
-                    self.target_sprites.add(TargetSprite(x, y, False))
+                    target_sprite = TargetSprite(x, y, False)
+                    self.target_sprites.add(target_sprite)
+                    self.map_sprites.add(target_sprite)
                 elif tile == '*':
-                    self.target_sprites.add(TargetSprite(x, y, True))
-                    self.box_sprites.add(BoxSprite(x, y))
+                    target_sprite = TargetSprite(x, y, True)
+                    box_sprite = BoxSprite(x, y)
+                    self.target_sprites.add(target_sprite)
+                    self.box_sprites.add(box_sprite)
+                    self.map_sprites.add(target_sprite)
+                    self.map_sprites.add(box_sprite, layer=1)
                 elif tile == '@':
                     self.peach = Peach(x, y)
+                    self.map_sprites.add(self.peach, layer=2)
                 elif tile == '+':
                     self.peach = Peach(x, y)
-                    self.target_sprites.add(TargetSprite(x, y, False))
+                    target_sprite = TargetSprite(x, y, True)
+                    self.target_sprites.add(target_sprite)
+                    self.map_sprites.add(target_sprite)
+                    self.map_sprites.add(self.peach, layer=2)
 
     def reset(self):
         self.load_map_sprites()
@@ -95,13 +107,6 @@ class Map():
 
     def draw(self, screen):
         self.map_sprites.draw(screen)
-        self.target_sprites.draw(screen)
-        self.box_sprites.draw(screen)
-        self.peach.draw(screen)
-        # for y, row in enumerate(self.map):
-        #     for x, tile in enumerate(row):
-        #         if tile == '$':
-        #             self.tiles.draw(screen, 20, x, y)
 
     def update(self, events, dt):
         for event in events:
@@ -116,10 +121,7 @@ class Map():
         if not self.playing:
             return
 
-        self.map_sprites.update(self)
-        self.target_sprites.update(self)
-        self.box_sprites.update(self, dt)
-        self.peach.update(self, dt)
+        self.map_sprites.update(self, dt)
         for target in self.target_sprites:
             target.set_reached(False)
             for box in self.box_sprites:
@@ -214,7 +216,7 @@ class Peach(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
         self.tiles = Tilesheet(
-            IMAGE_SPRITES[(False, False, 'peach')], TILESIZE, 40)
+            IMAGE_SPRITES[(False, False, 'peach')], TILESIZE, PEACH_HEIGHT)
         self.tile_idx = 1
         self.direction = "down"
         self.image = self.tiles.get_tile(self.tile_idx)
@@ -228,6 +230,10 @@ class Peach(pygame.sprite.Sprite):
         self.animation_dt = 0
         self.actions_buffer = []
         self.pushing = False
+
+    @property
+    def name(self):
+        return "peach"
 
     def load_actions(self, actions):
         for action in actions:

@@ -42,7 +42,7 @@ class SokobanGame:
             self.state.exit_state()
             self.set_state(self.state.next_state)
             if isinstance(self.state, GamePlay):
-                self.state.load_map("TestCases/input_5.txt")
+                self.state.load_map("TestCases/input_1.txt")
             self.state.enter_state()
 
     def update(self, events, dt):
@@ -84,6 +84,7 @@ class SokobanGame:
             if self.is_quitting():
                 break
             self.draw()
+            pygame.display.set_caption(f"Sokoban - FPS: {clock.get_fps()}")
             pygame.display.flip()
         self.quit()
 
@@ -109,7 +110,8 @@ class SokobanGame:
 
     def init_screen(self):
         pygame.init()
-        window_style = pygame.FULLSCREEN if self.fullscreen else 0
+        window_style = pygame.HWSURFACE | pygame.DOUBLEBUF | (
+            pygame.FULLSCREEN if self.fullscreen else 0)
         # We want 32 bits of color depth
         bit_depth = pygame.display.mode_ok(
             self.screen_rect.size, window_style, 32)
@@ -118,11 +120,11 @@ class SokobanGame:
         screen.fill(self.bg_color)
         pygame.mixer.pre_init(
             frequency=44100,
-            size=32,
+            size=-16,
             # N.B.: 2 here means stereo, not the number of channels to
             # use in the mixer
             channels=2,
-            buffer=512,
+            buffer=256,
         )
         pygame.font.init()
         self.screen = screen

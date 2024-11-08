@@ -2,7 +2,7 @@
 import importlib.resources
 import pygame
 
-from src.settings import TILESIZE
+from src.settings import TILESIZE, SCALE_FACTOR
 
 SPRITES = {
     "tileset": "tileset.png",
@@ -33,7 +33,15 @@ def load(module_path, name):
 
 def import_image(asset_name: str):
     with load("src.assets.images", asset_name) as resource:
-        return pygame.image.load(resource).convert_alpha()
+        img = pygame.image.load(resource).convert_alpha()
+        # Get the original size
+        original_size = img.get_size()
+        # Calculate the new size
+        new_size = (int(original_size[0] * SCALE_FACTOR),
+                    int(original_size[1] * SCALE_FACTOR))
+        # Downscale the image
+        downscaled_img = pygame.transform.scale(img, new_size)
+        return downscaled_img
 
 
 # need to call this function at least once to load the sprites

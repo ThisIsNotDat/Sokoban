@@ -65,7 +65,7 @@ class MainMenu(State):
         font = pygame.font.Font(None, 74)
         text = font.render("Press Enter to Start", True, (255, 255, 255))
         screen.blit(text, (100, 250))
-        pygame.display.set_caption("Sokoban - Main Menu")
+        # pygame.display.set_caption("Sokoban - Main Menu")
 
 
 class GamePlay(State):
@@ -100,7 +100,7 @@ class GamePlay(State):
 
     def draw(self, screen):
         screen.fill((240, 165, 59))
-        pygame.display.set_caption("Sokoban - Visualization")
+        # pygame.display.set_caption("Sokoban - Visualization")
         self.map.draw(screen)
 
     def solve_map(self, map_file):
