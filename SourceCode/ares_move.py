@@ -8,6 +8,7 @@ from queue import Queue
 from typing import Tuple
 import tracemalloc
 import sys
+import json
 #from memory_profiler import profile
 
 tracemalloc.start()
@@ -196,14 +197,14 @@ class Input():
     def in_inputWall(fileName, vec):
         if (vec[0] < 0 or vec[0] >= len(Input.mapWall[fileName])):
             return False
-        if (vec[1] < 0 or vec[1] >= len(Input.mapWall[fileName][0])):
+        if (vec[1] < 0 or vec[1] >= len(Input.mapWall[fileName][vec[0]])):
             return False
         return Input.mapWall[fileName][vec[0]][vec[1]]
     @staticmethod
     def is_deadLock(fileName, vec):
         if (vec[0] < 0 or vec[0] >= len(Input.deadLock[fileName])):
             return False
-        if (vec[1] < 0 or vec[1] >= len(Input.deadLock[fileName][0])):
+        if (vec[1] < 0 or vec[1] >= len(Input.deadLock[fileName][vec[0]])):
             return False
         return Input.deadLock[fileName][vec[0]][vec[1]]
     @staticmethod
@@ -234,7 +235,7 @@ class Input():
         return dist
     @staticmethod
     def readFile(fileName):
-        content = open(test_dir + fileName, 'r').read()
+        content = open(fileName, 'r').read()
         Input.fileNames.append(fileName[:-4])
         Input.inputWall[fileName] = []
         Input.inputSwitch[fileName] = []
@@ -377,8 +378,6 @@ class Direction(Enum):
     Down = Vector([1, 0])
     Right = Vector([0, 1])
 
-test_dir = './TestCases/'
-
 def get_shortest_dist(fileName, blocked_vec, start_vec, end_vec):
     # print(f"Finding shortest distance from {start_vec} to {end_vec} in {fileName} with blocked cell at {blocked_vec}")
     # Check if the input is valid
@@ -410,31 +409,28 @@ def get_shortest_dist(fileName, blocked_vec, start_vec, end_vec):
 
 dist_list = {}
 
-def get_pushing_stone_cost(fileName, i, stone_pos, switch_pos, direction):
+def get_pushing_stone_cost(fileName, w, stone_pos, switch_pos, end_direction):
     if fileName not in dist_list:
         dist_list[fileName] = {}
-    if i not in dist_list[fileName]:
-        dist_list[fileName][i] = {}
-    if stone_pos not in dist_list[fileName][i]:
-        dist_list[fileName][i][stone_pos] = {}
-    if len(dist_list[fileName][i][stone_pos].keys()) != 0:
-        if (switch_pos, direction) in dist_list[fileName][i][stone_pos]:
-            return dist_list[fileName][i][stone_pos][switch_pos, direction]
+    if w not in dist_list[fileName]:
+        dist_list[fileName][w] = {}
+    if stone_pos not in dist_list[fileName][w]:
+        dist_list[fileName][w][stone_pos] = {}
+    if len(dist_list[fileName][w][stone_pos].keys()) != 0:
+        if (switch_pos, end_direction) in dist_list[fileName][w][stone_pos]:
+            return dist_list[fileName][w][stone_pos][switch_pos, end_direction]
         else:
             return float('inf')
-    for id, _w in enumerate(Input.inputStone[fileName].values()):
-        if id == i:
-            w = _w
     start_stone_pos = stone_pos
     queue = PriorityQueue()
-    dist_list[fileName][i][start_stone_pos] = {}
+    dist_list[fileName][w][start_stone_pos] = {}
 
     # Initialize with current stone position and all directions
     for direction in Direction:
         ares_pos = start_stone_pos - direction.value
         if Input.is_valid_cell(fileName, ares_pos):
             queue.put(PrioritizedItem(0, (start_stone_pos, direction)))
-            dist_list[fileName][i][start_stone_pos][start_stone_pos, direction] = 0
+            dist_list[fileName][w][start_stone_pos][start_stone_pos, direction] = 0
     #print(f"Calculating distances for {fileName} with stone {i} at {start_stone_pos}")
     while not queue.empty():
         top_queue = queue.get()
@@ -457,15 +453,15 @@ def get_pushing_stone_cost(fileName, i, stone_pos, switch_pos, direction):
                 action_cost = ares_move_cost + w + 1
                 new_cost = current_cost + action_cost
                 
-                if ((next_stone_pos, new_direction) not in dist_list[fileName][i][start_stone_pos] or new_cost < dist_list[fileName][i][start_stone_pos][next_stone_pos, new_direction]):
+                if ((next_stone_pos, new_direction) not in dist_list[fileName][w][start_stone_pos] or new_cost < dist_list[fileName][w][start_stone_pos][next_stone_pos, new_direction]):
                     # print(f"next_stone_pos: {next_stone_pos}, new_direction: {new_direction}, ares_move_cost: {ares_move_cost}, action_cost: {action_cost}")
                     
-                    dist_list[fileName][i][start_stone_pos][next_stone_pos, new_direction] = new_cost
+                    dist_list[fileName][w][start_stone_pos][next_stone_pos, new_direction] = new_cost
                     #print(f"next_stone_pos: {next_stone_pos}, new_direction: {new_direction}, action_cost: {action_cost}")
-                    queue.put(PrioritizedItem(new_cost, (next_stone_pos, new_direction)))       
+                    queue.put(PrioritizedItem(new_cost, (next_stone_pos, new_direction)))  
 
-    if (switch_pos, direction) in dist_list[fileName][i][start_stone_pos]:
-        return dist_list[fileName][i][start_stone_pos][switch_pos, direction]
+    if (switch_pos, end_direction) in dist_list[fileName][w][start_stone_pos]:
+        return dist_list[fileName][w][start_stone_pos][switch_pos, end_direction]
     else:
         return float('inf')
          
@@ -473,13 +469,15 @@ def get_pushing_stone_cost(fileName, i, stone_pos, switch_pos, direction):
 class State:
     def __init__(self, name, ares, stones):
         self.ares = ares
-        self.stones = dict(sorted(stones.copy().items()))
+        #self.stones = dict(sorted(stones.copy().items()))
+        self.stones = stones.copy()
         self.name = name
 
     def __str__(self):
+        temp_stones = dict(sorted(self.stones.copy().items()))
         res = self.name + '\n'
-        for stone in self.stones:
-            res += str(stone) + ": " + str(self.stones[stone]) + '\n'
+        for stone in temp_stones:
+            res += str(stone) + ": " + str(temp_stones[stone]) + '\n'
         res += "ares: " + str(self.ares)
         return res
     
@@ -537,30 +535,12 @@ class State:
             for j, switch_pos in enumerate(Input.inputSwitch[self.name]):  # Iterate over switches
                 min_cost = float('inf')
                 for direction in Direction:
-                    min_cost = min(min_cost, get_pushing_stone_cost(self.name, i, stone_pos, switch_pos, direction))
+                    min_cost = min(min_cost, get_pushing_stone_cost(self.name, w, stone_pos, switch_pos, direction))
                 if min_cost != float('inf'):
-                    
                     hungarian.add_edge(i, j, min_cost)
 
             #total_cost += min_cost
         total_cost += hungarian.solve()
-
-        # # Distance from player to the nearest stone
-        # total_cost += min([get_shortest_dist(self.name, None, self.ares, stone_pos) for stone_pos in self.stones.keys()])
-
-        # # Penalty for deadlock
-        # for (stone_pos, w) in self.stones.items():
-        #     # Penalty +infinity if stone in corner and not on a switch
-        #     if is_deadLock(self.name, stone_pos) and stone_pos not in inputSwitch[self.name]:
-        #         total_cost += float('inf')
-        #     ## Penalty +infinity if 2 stones are adjacent and are not on switches and cannot be moved
-        #     f = stone_pos in inputSwitch[self.name]
-        #     for stone_pos2 in self.stones.keys():
-        #         vec_dist = stone_pos - stone_pos2
-        #         if vec_dist.magnitude_square() == 1 and (not f or stone_pos2 not in inputSwitch[self.name]):
-        #             direction = Vector([vec_dist[1], vec_dist[0]])
-        #             if (in_inputWall(self.name, stone_pos + direction) or in_inputWall(self.name, stone_pos - direction)) and (in_inputWall(self.name, stone_pos2 + direction) or in_inputWall(self.name, stone_pos2 - direction)):
-        #                 total_cost += float('inf')
 
         return total_cost
 
@@ -613,7 +593,6 @@ class Solver():
         self.reached = {}
         self.reached[str(state)] = 0
         self.node_number = 0
-
         self.priorityQueue = PriorityQueue()
     def expand(self):
         raise NotImplementedError("Subclasses must implement this method")
@@ -623,13 +602,17 @@ class SolverA(Solver):
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
             self.node_number += 1
-            if (self.node_number % 100 != 0): 
-                print ("\033[A                             \033[A")
-                print(self.node_number)
+            # if (self.node_number % 100 != 0): 
+            #     print ("\033[A                             \033[A")
+            #     print(self.node_number)
             #   print(top.path)    
             for child in top.children():
                 if (child.state.isGoal()):
-                    return (child, self.node_number)
+                    return {
+                        'node': child.path,
+                        'node_number': self.node_number,
+                        'cost': child.cost
+                    }
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
                     self.priorityQueue.put(PrioritizedItem(child.priority_value(), child))
@@ -646,7 +629,11 @@ class SolverBFS(Solver):
             #   print(top.path)    
             for child in top.children():
                 if (child.state.isGoal()):
-                    return (child, self.node_number)
+                    return {
+                        'node': child.path,
+                        'node_number': self.node_number,
+                        'cost': child.cost
+                    }
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
                     self.priorityQueue.put(PrioritizedItem(child.cost, child))
@@ -663,19 +650,27 @@ class SolverDFS(Solver):
             #   print(top.path)    
             for child in top.children():
                 if (child.state.isGoal()):
-                    return (child, self.node_number)
+                    return {
+                        'node': child.path,
+                        'node_number': self.node_number,
+                        'cost': child.cost
+                    }
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
                     self.priorityQueue.put(PrioritizedItem(-child.cost, child))
         print("FAILURE")
-class SolverUCS:
+class SolverUCS(Solver):
     def expand(self):
         self.priorityQueue.put(PrioritizedItem(self.rootNode.cost, self.rootNode))
 
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
             if (top.state.isGoal()):
-                return (top, self.node_number)
+                return {
+                    'node': top.path,
+                    'node_number': self.node_number,
+                    'cost': top.cost
+                }
             print ("\033[A                             \033[A")
             self.node_number += 1
             print(self.node_number)
@@ -685,23 +680,34 @@ class SolverUCS:
                     self.priorityQueue.put(PrioritizedItem(child.cost, child))
         print("FAILURE")
 
-def output_result(result, fileName):
-    with open('./Output/' + fileName[:-4] + '.txt', 'w') as f:
-        f.write(input_type + '\n')
-        f.write('Node: ' + str(result[1]) + '\n')
-        f.write('Path: ' + result[0].path + '\n')
-        f.write('Time taken: ' + str(time_end - time_start) + 's\n')
-        f.write(f"Current memory usage: {current / 10**6:.2f} MB\n")
-        f.write(f"Peak memory usage: {peak / 10**6:.2f} MB\n")
+def output_result(result, input_file, type, output_file=None):
+    if output_file is None:
+        current_dir = os.path.dirname(os.path.realpath(input_file))
+        if not os.path.exists(os.path.join(current_dir, 'output')):
+            os.makedirs(os.path.join(current_dir, 'output'))
+        base = os.path.basename(input_file)
+        output_file = os.path.join(current_dir, 'output', base.split('.')[0] + f'_ares-move_{type}.json')
+        output_file = output_file.replace('*', 'star')
+
+    print(result)
+    print(f"Saving in {output_file}")
+    with open(output_file, 'w') as f:
+        result['time'] = time_end - time_start
+        result['current_memory'] = current
+        result['peak_memory'] = peak
+        json.dump(result, f, indent=4)
 
 import time
+import argparse
 time_start = time.time()
-input_file = ['demo.txt']
-if len(sys.argv) > 1:
-    input_file = sys.argv[1]
-    input_type = sys.argv[2]
-else:
-    raise TypeError("Not providing shit")
+parser = argparse.ArgumentParser()
+parser.add_argument('--input', help='input file', required=True)
+parser.add_argument('--type', help='type of search', required=True)
+parser.add_argument('--output', help='output file', required=False, default=None)
+args = parser.parse_args()
+input_file = args.input
+input_type = args.type
+output_file = args.output
 
 Input.readFile(input_file)
 start_state = State(input_file, Input.inputAres[input_file], Input.inputStone[input_file])
@@ -725,7 +731,7 @@ current, peak = tracemalloc.get_traced_memory()
 print(f"Current memory usage: {current / 10**6:.2f} MB")
 print(f"Peak memory usage: {peak / 10**6:.2f} MB")
 
-output_result(result, input_file)
+output_result(result, input_file, input_type, output_file)
 
 # Stop tracing memory allocation
 tracemalloc.stop()
