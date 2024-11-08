@@ -8,7 +8,7 @@ class Map():
     def __init__(self, map_str):
         self.map = map_str
         self.height = len(self.map)
-        self.width = len(self.map[0])
+        self.width = max(len(row) for row in self.map)
         self.padding_map()
         self.load_map_sprites()
         self.playing = False
@@ -20,6 +20,8 @@ class Map():
         self.moves = moves
 
     def padding_map(self):
+        for y in range(self.height):
+            self.map[y] = self.map[y].ljust(self.width)
         self.padding_left = (WIDTH - self.width * TILESIZE) // TILESIZE // 2
         self.padding_top = (HEIGHT - self.height * TILESIZE) // TILESIZE // 2
         self.padding_right = (WIDTH - self.width *
@@ -38,6 +40,10 @@ class Map():
             self.map.append(' ' * WIDTH)
         self.height = len(self.map)
         print(f"Map size: {self.width}x{self.height}")
+
+    def in_grass_zone(self, x, y):  # x, y is the coordinate in the map
+        return x >= self.padding_left and x < self.width-self.padding_right \
+            and y >= self.padding_top and y < self.height-self.padding_bottom
 
     def load_map_sprites(self):
         self.map_sprites = pygame.sprite.LayeredUpdates()
@@ -69,7 +75,9 @@ class Map():
                     else:
                         self.map_sprites.add(MapBlock(x, y, 'grass'))
                 else:
-                    if x < self.height-1 and self.map[y][x+1] == '#':
+                    if y > 0 and self.in_grass_zone(x, y-1):
+                        self.map_sprites.add(MapBlock(x, y, 'water_top_grass'))
+                    elif x < self.height-1 and self.in_grass_zone(x+1, y):
                         self.map_sprites.add(MapBlock(x, y, 'water_left'))
                     else:
                         self.map_sprites.add(MapBlock(x, y, 'water'))

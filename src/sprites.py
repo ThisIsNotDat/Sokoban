@@ -23,6 +23,8 @@ MAP_SQUARES = {
     'water_left': 16,
     'grass': 5,
     'grass_left': 6,
+    'water_top_grass': 10,
+    'water_top_grass_left': 11,
 }
 MAP_SPRITES = {}
 
