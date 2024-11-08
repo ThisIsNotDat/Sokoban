@@ -75,12 +75,11 @@ class SokobanGame:
         while True:
             # Calculate delta time in seconds
             delta_time = clock.tick(DESIRED_FPS) / 1000.0
-            events = pygame.event.get()
             while delta_time - SECOND_PER_FRAME > 0:
+                events = pygame.event.get()
                 # Pass delta time to update method
                 self.update(events, SECOND_PER_FRAME)
                 delta_time -= SECOND_PER_FRAME
-            self.update(events, delta_time)
             self.screen.fill((0, 0, 0))  # Clear the screen
             if self.is_quitting():
                 break

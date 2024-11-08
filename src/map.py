@@ -11,6 +11,7 @@ class Map():
         self.width = len(self.map[0])
         self.padding_map()
         self.load_map_sprites()
+        self.playing = False
 
     def padding_map(self):
         self.padding_left = (WIDTH - self.width * TILESIZE) // TILESIZE // 2
@@ -82,6 +83,9 @@ class Map():
                     self.target_sprites.add(TargetSprite(x, y, False))
         self.peach.load_actions("rrurruuurrDDRluulldRurrrdrddlUllU")
 
+    def reset(self):
+        self.load_map_sprites()
+
     def draw(self, screen):
         self.map_sprites.draw(screen)
         self.target_sprites.draw(screen)
@@ -93,6 +97,18 @@ class Map():
         #             self.tiles.draw(screen, 20, x, y)
 
     def update(self, events, dt):
+        for event in events:
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_r:
+                    self.reset()
+                    print("Reset")
+                elif event.key == pygame.K_SPACE:
+                    self.playing = not self.playing
+                    print(f"Playing: {self.playing}")
+
+        if not self.playing:
+            return
+
         self.map_sprites.update(self)
         self.target_sprites.update(self)
         self.box_sprites.update(self, dt)
@@ -143,7 +159,6 @@ class BoxSprite(MapBlock):
             self.countdown = self.speed
             self.rect = self.target_rect
             self.velocity = (0, 0)
-            self.move('down')
         else:
             self.rect = self.rect.move(self.velocity[0] * dt,
                                        self.velocity[1] * dt)
@@ -205,6 +220,7 @@ class Peach(pygame.sprite.Sprite):
         self.countdown = 0
         self.animation_dt = 0
         self.actions_buffer = []
+        self.pushing = False
 
     def load_actions(self, actions):
         for action in actions:
@@ -233,7 +249,8 @@ class Peach(pygame.sprite.Sprite):
         elif self.velocity != (0, 0):
             self.rect = self.rect.move(self.velocity[0] * dt,
                                        self.velocity[1] * dt)
-            if self.animation_dt >= self.speed/5:
+            if self.animation_dt >= self.speed/6:
+                print(f"{self.animation_dt} {self.speed/6}")
                 self.tile_idx = self.next_tile(self.direction, self.tile_idx)
                 self.image = self.tiles.get_tile(self.tile_idx)
                 self.animation_dt = 0
@@ -251,27 +268,32 @@ class Peach(pygame.sprite.Sprite):
         else:
             return (tile_idx + 1) % 3 + 9
 
-    def move(self, direction):
+    def move(self, action, transition=True):
         if self.velocity != (0, 0):
             self.rect = self.target_rect
 
-        action, pushing = direction
-        if action == "down":
+        direction, pushing = action
+        if direction == "down":
             self.direction = 0
             self.target_rect = self.rect.move(0, TILESIZE)
-        elif action == "left":
+        elif direction == "left":
             self.direction = 1
             self.target_rect = self.rect.move(-TILESIZE, 0)
-        elif action == "right":
+        elif direction == "right":
             self.direction = 2
             self.target_rect = self.rect.move(TILESIZE, 0)
         else:
             self.direction = 3
             self.target_rect = self.rect.move(0, -TILESIZE)
-        self.velocity = ((self.target_rect.x - self.rect.x) / self.speed,
-                         (self.target_rect.y - self.rect.y) / self.speed)
-        self.tile_idx = self.next_tile(self.direction, self.tile_idx)
+        if transition:
+            self.velocity = ((self.target_rect.x - self.rect.x) / self.speed,
+                             (self.target_rect.y - self.rect.y) / self.speed)
+            self.tile_idx = self.next_tile(self.direction, self.tile_idx)
+        else:
+            self.rect = self.target_rect
+            self.tile_idx = self.stand_still()
         self.image = self.tiles.get_tile(self.tile_idx)
+        self.pushing = pushing
 
     def stand_still(self):
         if self.direction == 0:
