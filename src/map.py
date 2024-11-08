@@ -121,7 +121,12 @@ class Map():
         if not self.playing:
             return
 
-        self.map_sprites.update(self, dt)
+        if self.peach is not None:
+            if self.peach.pushing:
+                for box in self.box_sprites:
+                    if box.velocity != (0, 0):
+                        box.update(self, dt)
+        self.peach.update(self, dt)
         for target in self.target_sprites:
             target.set_reached(False)
             for box in self.box_sprites:
@@ -158,6 +163,11 @@ class BoxSprite(MapBlock):
         self.speed = ANIMATION_SPEED  # second per animation
         self.velocity = (0, 0)  # pixel per second
         self.countdown = self.speed
+        self.float_position = [self.rect.x, self.rect.y]
+
+    def match_target(self):
+        self.rect = self.target_rect
+        self.float_position = [self.rect.x, self.rect.y]
 
     def update(self, map, dt):
         assert not self.collision(map)
@@ -166,15 +176,17 @@ class BoxSprite(MapBlock):
 
         if self.countdown <= 0:
             self.countdown = self.speed
-            self.rect = self.target_rect
+            self.match_target()
             self.velocity = (0, 0)
         else:
-            self.rect = self.rect.move(self.velocity[0] * dt,
-                                       self.velocity[1] * dt)
+            self.float_position[0] += self.velocity[0] * dt
+            self.float_position[1] += self.velocity[1] * dt
+            self.rect.x = round(self.float_position[0])
+            self.rect.y = round(self.float_position[1])
 
     def move(self, direction):
         if self.velocity != (0, 0):
-            self.rect = self.target_rect
+            self.match_target()
 
         if direction == 'up':
             self.target_rect = self.rect.move(0, -TILESIZE)
@@ -230,6 +242,7 @@ class Peach(pygame.sprite.Sprite):
         self.animation_dt = 0
         self.actions_buffer = []
         self.pushing = False
+        self.float_positon = [self.rect.x, self.rect.y]
 
     @property
     def name(self):
@@ -269,9 +282,13 @@ class Peach(pygame.sprite.Sprite):
         else:
             return (tile_idx + 1) % 3 + 9
 
+    def match_target(self):
+        self.rect = self.target_rect
+        self.float_position = [self.rect.x, self.rect.y]
+
     def move(self, action, transition=True):
         if self.velocity != (0, 0):
-            self.rect = self.target_rect
+            self.match_target()
 
         direction, pushing = action
         self.direction = direction
@@ -287,9 +304,10 @@ class Peach(pygame.sprite.Sprite):
         if transition:
             self.velocity = ((self.target_rect.x - self.rect.x) / self.speed,
                              (self.target_rect.y - self.rect.y) / self.speed)
+            print(f"Moving {direction} with speed {self.velocity}")
             self.tile_idx = self.next_tile(self.direction, self.tile_idx)
         else:
-            self.rect = self.target_rect
+            self.match_target()
             self.tile_idx = self.stand_still()
         self.image = self.tiles.get_tile(self.tile_idx)
 
@@ -308,7 +326,8 @@ class Peach(pygame.sprite.Sprite):
 
     def reset_and_next_action(self):
         self.countdown = self.speed
-        self.rect = self.target_rect
+        self.match_target()
+        self.pushing = False
         if len(self.actions_buffer) > 0:
             self.move(self.actions_buffer.pop(0))
         else:
@@ -317,9 +336,11 @@ class Peach(pygame.sprite.Sprite):
             self.velocity = (0, 0)
 
     def move_and_change_tile(self, dt):
-        self.rect = self.rect.move(self.velocity[0] * dt,
-                                   self.velocity[1] * dt)
-        if self.animation_dt >= self.speed/6:
+        self.float_position[0] += self.velocity[0] * dt
+        self.float_position[1] += self.velocity[1] * dt
+        self.rect.x = round(self.float_position[0])
+        self.rect.y = round(self.float_position[1])
+        if self.animation_dt >= self.speed/4:
             self.tile_idx = self.next_tile(self.direction, self.tile_idx)
             self.image = self.tiles.get_tile(self.tile_idx)
             self.animation_dt = 0
