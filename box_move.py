@@ -457,18 +457,18 @@ class SolverA(Solver):
         self.priorityQueue.put(PrioritizedItem(self.rootNode.priority_value(), self.rootNode))
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
+            if (top.state.isGoal()):
+                return {
+                    'node': top.path,
+                    'node_number': self.node_number,
+                    'cost': top.cost
+                }
             self.node_number += 1
             # if (self.node_number % 100 != 0): 
             #     print ("\033[A                             \033[A")
             #     print(self.node_number)
             #   print(top.path)    
             for child in top.children():
-                if (child.state.isGoal()):
-                    return {
-                        'node': child.path,
-                        'node_number': self.node_number,
-                        'cost': child.cost
-                    }
                 str_child = str(child.state)
                 if (str_child not in self.reached.keys() or self.reached[str_child] > child.cost):
                     self.reached[str_child] = child.cost
