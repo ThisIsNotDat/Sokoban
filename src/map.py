@@ -6,14 +6,15 @@ from src.fonts import FONTS
 
 
 class Map():
-    def __init__(self, map_str):
+    def __init__(self, map_str, weights=None):
         self.map = map_str
         self.height = len(self.map)
         self.width = max(len(row) for row in self.map)
         self.padding_map()
-        self.load_map_sprites()
+        self.load_map_sprites(weights)
         self.playing = False
         self.moves = ""
+        self.weights = weights
 
     @property
     def cost(self):
@@ -50,7 +51,7 @@ class Map():
         return x >= self.padding_left and x < self.width-self.padding_right \
             and y >= self.padding_top and y < self.height-self.padding_bottom
 
-    def load_map_sprites(self):
+    def load_map_sprites(self, weights=None):
         self.map_sprites = pygame.sprite.LayeredUpdates()
         self.non_water_sprites = pygame.sprite.Group()
         self.target_sprites = pygame.sprite.Group()
@@ -89,10 +90,12 @@ class Map():
                         self.map_sprites.add(MapBlock(x, y, 'water_left'))
                     else:
                         self.map_sprites.add(MapBlock(x, y, 'water'))
+        weight_id = 0
         for y, row in enumerate(self.map):
             for x, tile in enumerate(row):
                 if tile == '$':
-                    box_sprite = BoxSprite(x, y)
+                    box_sprite = BoxSprite(x, y, int(weights[weight_id]))
+                    weight_id += 1
                     self.box_sprites.add(box_sprite)
                     self.map_sprites.add(box_sprite, layer=1)
                 elif tile == '.':
@@ -101,7 +104,8 @@ class Map():
                     self.map_sprites.add(target_sprite)
                 elif tile == '*':
                     target_sprite = TargetSprite(x, y, True)
-                    box_sprite = BoxSprite(x, y)
+                    box_sprite = BoxSprite(x, y, int(weights[weight_id]))
+                    weight_id += 1
                     self.target_sprites.add(target_sprite)
                     self.box_sprites.add(box_sprite)
                     self.map_sprites.add(target_sprite)
@@ -117,7 +121,7 @@ class Map():
                     self.map_sprites.add(self.peach, layer=2)
 
     def reset(self):
-        self.load_map_sprites()
+        self.load_map_sprites(self.weights)
         self.load_moves(self.moves)
         self.playing = False
 
@@ -180,6 +184,7 @@ class MapBlock(pygame.sprite.Sprite):
 class BoxSprite(MapBlock):
     def __init__(self, x, y, weight=1):
         super().__init__(x, y, 'box')
+        self.image = self.image.copy()
         self.rect.x = x * TILESIZE
         self.rect.y = y * TILESIZE
         self.target_rect = self.rect
@@ -190,6 +195,7 @@ class BoxSprite(MapBlock):
         self.add_weight(weight)
 
     def add_weight(self, weight):
+        print(f"Adding weight {weight}")
         self.weight = weight
         # Set up font
         # Use None for default font or specify a font path
@@ -384,10 +390,15 @@ class Peach(pygame.sprite.Sprite):
             self.animation_dt = 0
 
     def check_box_collision(self, map):
+        for block in map.map_sprites:
+            if block.name.startswith("wall") \
+                    and self.collision_box().colliderect(block.rect):
+                raise Exception("Peach hit the wall")
         for box in map.box_sprites:
             if self.collision_box().colliderect(box.rect):
                 if self.pushing and box.velocity == (0, 0):
                     box.move(self.direction)
+                    self.cost += box.weight
                     break
 
     def collision_box(self):

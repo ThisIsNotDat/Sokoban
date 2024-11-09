@@ -118,7 +118,8 @@ class GamePlay(State):
     def load_map(self, map_file):
         with open(map_file, "r") as f:
             content = f.read().split("\n")
-            self.map = Map(content[1:-1])
+            weights = content[0].split(" ")
+            self.map = Map(content[1:-1], weights)
             # call a new thread to solve the map
         self.file_name = map_file.split("/")[-1].split(".")[0]
         self.solve_map(map_file)
@@ -127,7 +128,7 @@ class GamePlay(State):
         super().update(events, dt)
         for event in events:
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:  # Start game on Enter
+                if event.key == pygame.K_ESCAPE:  # Start game on Enter
                     self.next_state = StateList.quitting
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
