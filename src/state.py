@@ -4,9 +4,11 @@ import pygame
 import subprocess
 import logging
 import json
+import pygame_gui
 
 from src.map import Map
-from src.settings import DESIRED_FPS, SECOND_PER_FRAME
+from src.settings import DESIRED_FPS, SECOND_PER_FRAME, WIDTH, HEIGHT
+from src.gui import TextBoxWithCaption
 
 
 class StateList(enum.Enum):
@@ -32,6 +34,8 @@ class StateError(Exception):
 class State:
     def __init__(self):
         self.next_state = None
+        self.manager = pygame_gui.UIManager(
+            (WIDTH, HEIGHT), theme_path="assets/theme.json")
         print(f"Initializing State: {self.__class__.__name__}")
 
     def update(self, events, dt):
@@ -39,10 +43,11 @@ class State:
         for event in events:
             if event.type == pygame.QUIT:
                 self.next_state = StateList.quitting
+            self.manager.process_events(event)
 
     def draw(self, screen):
         """Draw the state to the screen."""
-        raise NotImplementedError
+        self.manager.draw_ui(screen)
 
     def enter_state(self):
         """Optional: Initialize or reset the state when entering."""
@@ -74,12 +79,14 @@ class MainMenu(State):
         super().__init__()
 
     def update(self, events, dt):
+        super().update(events, dt)
         for event in events:
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RETURN:  # Start game on Enter
                     self.next_state = StateList.game_playing
 
     def draw(self, screen):
+        super().draw(screen)
         screen.fill((0, 0, 0))
         font = pygame.font.Font(None, 74)
         text = font.render("Press Enter to Start", True, (255, 255, 255))
@@ -96,6 +103,13 @@ class GamePlay(State):
             format=format, level=logging.INFO, datefmt="%H:%M:%S")
         self.solving_process = None
         self.file_name = None
+        self.gCost = TextBoxWithCaption(
+            pygame.Rect((10, 10), (200, 50)),
+            self.manager,
+            "100",
+            "gCost",
+            "gCost",
+        )
 
     def load_map(self, map_file):
         with open(map_file, "r") as f:
@@ -106,6 +120,7 @@ class GamePlay(State):
         self.solve_map(map_file)
 
     def update(self, events, dt):
+        super().update(events, dt)
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:  # Start game on Enter
@@ -118,6 +133,7 @@ class GamePlay(State):
         self.map.update(events, dt)
 
     def draw(self, screen):
+        super().draw(screen)
         # pygame.display.set_caption("Sokoban - Visualization")
         self.map.draw(screen)
 
@@ -158,4 +174,5 @@ class Initialized(State):
 
 
 class Quitting(State):
-    pass
+    def loop(self, screen):
+        return

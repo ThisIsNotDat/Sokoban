@@ -1,0 +1,14 @@
+{
+    "default": {
+        "font": {
+            "name": "pixel",
+            "size": "12",
+            "bold": "0",
+            "italic": "1",
+            "regular_resource": {
+                "package": "data.fonts",
+                "resource": "fonts/VCR_OSD_MONO_1.001.ttf"
+            }
+        }
+    }
+}

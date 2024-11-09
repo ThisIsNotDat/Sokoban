@@ -1,7 +1,9 @@
-from src.sprites import load_sprites, SPRITES, IMAGE_SPRITES
+from src.sprites import load_sprites
+from src.fonts import load_fonts
 from dataclasses import dataclass, field
-from src.settings import SCREENRECT, DESIRED_FPS, SECOND_PER_FRAME
+from src.settings import SCREENRECT
 import pygame
+
 
 from src.state import State, StateList, StateError, MainMenu, GamePlay, \
     Initializing, Quitting, Initialized
@@ -77,6 +79,7 @@ class SokobanGame:
         self.loop()
 
     def init(self):
+        self.init_screen()
         self.states = {
             StateList.main_menu: MainMenu(),
             StateList.game_playing: GamePlay(),
@@ -85,8 +88,8 @@ class SokobanGame:
             StateList.quitting: Quitting(),
         }
         self.set_state(StateList.initializing)
-        self.init_screen()
         load_sprites()
+        load_fonts()
         self.set_state(StateList.initialized)
 
     def init_screen(self):
