@@ -134,7 +134,7 @@ class GamePlay(State):
             container=self.manager.get_root_container(),
         )
         self.test_paths = []
-        self.current_map = 0
+        self.current_map = 7
         self.load_test_paths()
         self.refresh = False
 
