@@ -1,14 +1,39 @@
 {
-    "default": {
-        "font": {
-            "name": "pixel",
-            "size": "12",
-            "bold": "0",
-            "italic": "1",
-            "regular_resource": {
-                "package": "data.fonts",
-                "resource": "fonts/VCR_OSD_MONO_1.001.ttf"
+    "fonts": {
+        "default": {
+            "default_font": {
+                "file": "src/assets/fonts/VCR_OSD_MONO_1.001.ttf",
+                "size": 30
             }
+        }
+    },
+    "colors": {
+        "label_text": {
+            "normal_text": "#FFFFFF"
+        }
+    },
+    "label": {
+        "colours": {
+            "dark_bg": "#25292e",
+            "normal_text": "#c5cbd8",
+            "text_shadow": "#505050"
+        },
+        "font":
+        {
+            "name": "default_font",
+            "size": "28",
+            "bold": "0",
+            "italic": "0",
+            "regular_resource": {
+                "package": "src.assets.fonts",
+                "resource": "VCR_OSD_MONO_1.001.ttf"
+            }
+        },
+        "misc":
+        {
+            "text_shadow": "1",
+            "text_shadow_size": "1",
+            "text_shadow_offset": "0,0"
         }
     }
 }

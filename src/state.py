@@ -35,7 +35,8 @@ class State:
     def __init__(self):
         self.next_state = None
         self.manager = pygame_gui.UIManager(
-            (WIDTH, HEIGHT), theme_path="assets/theme.json")
+            (WIDTH, HEIGHT),
+            theme_path="src/assets/theme.json",)
         print(f"Initializing State: {self.__class__.__name__}")
 
     def update(self, events, dt):
@@ -44,10 +45,12 @@ class State:
             if event.type == pygame.QUIT:
                 self.next_state = StateList.quitting
             self.manager.process_events(event)
+        self.manager.update(dt)
 
     def draw(self, screen):
         """Draw the state to the screen."""
         self.manager.draw_ui(screen)
+        # print(f"draw gui {self.manager.get_root_container()}")
 
     def enter_state(self):
         """Optional: Initialize or reset the state when entering."""
@@ -86,11 +89,11 @@ class MainMenu(State):
                     self.next_state = StateList.game_playing
 
     def draw(self, screen):
-        super().draw(screen)
         screen.fill((0, 0, 0))
         font = pygame.font.Font(None, 74)
         text = font.render("Press Enter to Start", True, (255, 255, 255))
         screen.blit(text, (100, 250))
+        super().draw(screen)
         # pygame.display.set_caption("Sokoban - Main Menu")
 
 
@@ -103,13 +106,15 @@ class GamePlay(State):
             format=format, level=logging.INFO, datefmt="%H:%M:%S")
         self.solving_process = None
         self.file_name = None
-        self.gCost = TextBoxWithCaption(
-            pygame.Rect((10, 10), (200, 50)),
-            self.manager,
-            "100",
-            "gCost",
-            "gCost",
+        self.gCost = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 0), (200, 50)),
+            text="Cost: 100",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
         )
+        # print number of gui in manager
+        print(f"Number of gui in manager: {
+              len(self.manager.get_root_container().elements)}")
 
     def load_map(self, map_file):
         with open(map_file, "r") as f:
@@ -131,11 +136,12 @@ class GamePlay(State):
                 self.read_solution()
                 self.solving_process = None
         self.map.update(events, dt)
+        self.gCost.set_text(f"Cost: {self.map.cost}")
 
     def draw(self, screen):
+        self.map.draw(screen)
         super().draw(screen)
         # pygame.display.set_caption("Sokoban - Visualization")
-        self.map.draw(screen)
 
     def solve_map(self, map_file):
         logging.info(f"Solving map {map_file}")
@@ -161,7 +167,8 @@ class GamePlay(State):
                 self.update(events, SECOND_PER_FRAME)
                 delta_time -= SECOND_PER_FRAME
             self.draw(screen)
-            pygame.display.set_caption(f"Sokoban - FPS: {clock.get_fps()}")
+            pygame.display.set_caption(
+                f"Sokoban Visualization - FPS: {clock.get_fps()}")
             pygame.display.flip()
 
 

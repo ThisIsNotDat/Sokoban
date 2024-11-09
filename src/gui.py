@@ -20,9 +20,6 @@ class TextBoxWithCaption(pygame_gui.elements.UIPanel):
             object_id=object_id,
             container=self,
         )
-        self.text.starting_height = starting_height
-        # self.text.font = FONTS["default"]
-        # self.caption.font = FONTS["default"]
 
     def get_text(self):
         return self.text.get_text()

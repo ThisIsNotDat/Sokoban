@@ -14,6 +14,10 @@ class Map():
         self.playing = False
         self.moves = ""
 
+    @property
+    def cost(self):
+        return self.peach.cost
+
     def load_moves(self, moves):
         assert self.peach is not None, "Peach not found"
         self.peach.load_actions(moves)
@@ -261,6 +265,7 @@ class Peach(pygame.sprite.Sprite):
         self.actions_buffer = []
         self.pushing = False
         self.float_positon = [self.rect.x, self.rect.y]
+        self.cost = 0
 
     @property
     def name(self):
@@ -328,6 +333,7 @@ class Peach(pygame.sprite.Sprite):
             self.match_target()
             self.tile_idx = self.stand_still()
         self.image = self.tiles.get_tile(self.tile_idx)
+        self.cost += 1
 
     def stand_still(self):
         if self.direction == "down":
