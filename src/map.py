@@ -357,7 +357,7 @@ class Peach(pygame.sprite.Sprite):
         if transition:
             self.velocity = ((self.target_rect.x - self.rect.x) / self.speed,
                              (self.target_rect.y - self.rect.y) / self.speed)
-            print(f"Moving {direction} with speed {self.velocity}")
+            # print(f"Moving {direction} with speed {self.velocity}")
             self.tile_idx = self.next_tile(self.direction, self.tile_idx)
         else:
             self.match_target()

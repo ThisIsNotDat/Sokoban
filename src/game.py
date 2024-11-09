@@ -1,8 +1,10 @@
 from src.sprites import load_sprites
 from src.fonts import load_fonts
 from dataclasses import dataclass, field
-from src.settings import SCREENRECT
+from src.settings import SCREENRECT, TEST_FOLDER
+
 import pygame
+import os
 
 
 from src.state import State, StateList, StateError, MainMenu, GamePlay, \
@@ -43,8 +45,6 @@ class SokobanGame:
         if self.state.next_state:
             self.state.exit_state()
             self.set_state(self.state.next_state)
-            if isinstance(self.state, GamePlay):
-                self.state.load_map("TestCases/demo.txt")
             self.state.enter_state()
 
     def update(self):
@@ -75,7 +75,7 @@ class SokobanGame:
         pygame.quit()
 
     def start_game(self):
-        self.set_state(StateList.main_menu)
+        self.set_state(StateList.game_playing)
         self.loop()
 
     def init(self):

@@ -7,7 +7,9 @@ import json
 import pygame_gui
 
 from src.map import Map
-from src.settings import DESIRED_FPS, SECOND_PER_FRAME, WIDTH, HEIGHT
+from src.settings import DESIRED_FPS, SECOND_PER_FRAME, \
+    WIDTH, HEIGHT, TEST_FOLDER
+import os
 
 
 class StateList(enum.Enum):
@@ -79,6 +81,13 @@ class State:
 class MainMenu(State):
     def __init__(self):
         super().__init__()
+        self.go_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(
+                (WIDTH // 2 - 96, HEIGHT // 2 - 24), (192, 48)),
+            text="GO",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
 
     def update(self, events, dt):
         super().update(events, dt)
@@ -86,12 +95,12 @@ class MainMenu(State):
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_RETURN:  # Start game on Enter
                     self.next_state = StateList.game_playing
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == self.go_button:
+                        self.next_state = StateList.game_playing
 
     def draw(self, screen):
-        screen.fill((0, 0, 0))
-        font = pygame.font.Font(None, 74)
-        text = font.render("Press Enter to Start", True, (255, 255, 255))
-        screen.blit(text, (100, 250))
         super().draw(screen)
         # pygame.display.set_caption("Sokoban - Main Menu")
 
@@ -123,18 +132,29 @@ class GamePlay(State):
             manager=self.manager,
             container=self.manager.get_root_container(),
         )
-        # print number of gui in manager
-        print(f"Number of gui in manager: {
-              len(self.manager.get_root_container().elements)}")
+        self.test_paths = []
+        self.current_map = 0
+        self.load_test_paths()
+        self.refresh = False
+
+    def load_test_paths(self):
+        for file in os.listdir(TEST_FOLDER):
+            if file.endswith(".txt"):
+                self.test_paths.append(os.path.join(TEST_FOLDER, file))
+                print(f"Found test file: {file}")
 
     def load_map(self, map_file):
+        print("Loading map", map_file)
         with open(map_file, "r") as f:
             content = f.read().split("\n")
             weights = content[0].split(" ")
+            print("Weights:", weights)
             self.map = Map(content[1:-1], weights)
             # call a new thread to solve the map
         self.file_name = map_file.split("/")[-1].split(".")[0]
-        self.solve_map(map_file)
+        self.map_file = map_file
+        self.refresh = True
+        print("Loaded map", map_file)
 
     def update(self, events, dt):
         super().update(events, dt)
@@ -142,6 +162,16 @@ class GamePlay(State):
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:  # Start game on Enter
                     self.next_state = StateList.quitting
+                elif event.key == pygame.K_RETURN:
+                    self.solve_map(self.map_file)
+                elif event.key == pygame.K_RIGHT:
+                    self.current_map = (
+                        self.current_map + 1) % len(self.test_paths)
+                    self.load_map(self.test_paths[self.current_map])
+                elif event.key == pygame.K_LEFT:
+                    self.current_map = (
+                        self.current_map - 1) % len(self.test_paths)
+                    self.load_map(self.test_paths[self.current_map])
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
                 logging.info("Solving process finished")
@@ -163,7 +193,7 @@ class GamePlay(State):
             f'python search.py --input {map_file} --type A*', shell=True)
 
     def read_solution(self):
-        with open(f"./TestCases/output/{self.file_name}_ares_Astar.json", "r") as f:
+        with open(os.path.join(TEST_FOLDER, f"output/{self.file_name}_ares_Astar.json"), "r") as f:
             data = json.load(f)
             self.map.load_moves(data["node"])
             print("Solution:", data["node"])
@@ -171,7 +201,7 @@ class GamePlay(State):
     def loop(self, screen):
         """The main game loop. This is where the game logic is executed."""
         clock = pygame.time.Clock()
-        self.map.draw(screen, full=True)
+        self.load_map(self.test_paths[self.current_map])
         while self.next_state is None:
             # Calculate delta time in seconds
             delta_time = clock.tick(DESIRED_FPS) / 1000.0
@@ -180,10 +210,22 @@ class GamePlay(State):
                 # Pass delta time to update method
                 self.update(events, SECOND_PER_FRAME)
                 delta_time -= SECOND_PER_FRAME
+            if self.refresh:
+                self.map.draw(screen, full=True)
+                self.refresh = False
             self.draw(screen)
             pygame.display.set_caption(
                 f"Sokoban Visualization - FPS: {clock.get_fps()}")
             pygame.display.flip()
+
+    def exit_state(self):
+        super().exit_state()
+        if self.solving_process is not None:
+            self.solving_process.kill()
+            self.solving_process = None
+
+    def enter_state(self):
+        return super().enter_state()
 
 
 class Initializing(State):
