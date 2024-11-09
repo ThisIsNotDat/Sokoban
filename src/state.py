@@ -5,11 +5,12 @@ import subprocess
 import logging
 import json
 import pygame_gui
+import os
+import signal
 
 from src.map import Map
 from src.settings import DESIRED_FPS, SECOND_PER_FRAME, \
     WIDTH, HEIGHT, TEST_FOLDER
-import os
 
 
 class StateList(enum.Enum):
@@ -147,7 +148,7 @@ class GamePlay(State):
         print("Loading map", map_file)
         with open(map_file, "r") as f:
             content = f.read().split("\n")
-            weights = content[0].split(" ")
+            weights = content[0].strip().split(" ")
             print("Weights:", weights)
             self.map = Map(content[1:-1], weights)
             # call a new thread to solve the map
@@ -183,10 +184,7 @@ class GamePlay(State):
     def change_map(self, new_map):
         self.current_map = new_map
         self.load_map(self.test_paths[self.current_map])
-        if self.solving_process is not None:
-            self.solving_process.kill()
-            self.solving_process = None
-            print("Kill solve process")
+        self.kill_solving_process()
 
     def draw(self, screen):
         self.map.draw(screen)
@@ -230,8 +228,12 @@ class GamePlay(State):
 
     def exit_state(self):
         super().exit_state()
+        self.kill_solving_process()
+
+    def kill_solving_process(self):
         if self.solving_process is not None:
-            self.solving_process.kill()
+            self.solving_process.terminate()
+            self.solving_process.wait()
             self.solving_process = None
             print("Kill solve process")
 
