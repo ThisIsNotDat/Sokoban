@@ -2,6 +2,7 @@ import pygame.sprite
 
 from src.sprites import IMAGE_SPRITES, MAP_SPRITES, Tilesheet
 from src.settings import WIDTH, HEIGHT, TILESIZE, ANIMATION_SPEED, PEACH_HEIGHT
+from src.fonts import FONTS
 
 
 class Map():
@@ -177,7 +178,7 @@ class MapBlock(pygame.sprite.Sprite):
 
 
 class BoxSprite(MapBlock):
-    def __init__(self, x, y):
+    def __init__(self, x, y, weight=1):
         super().__init__(x, y, 'box')
         self.rect.x = x * TILESIZE
         self.rect.y = y * TILESIZE
@@ -186,6 +187,19 @@ class BoxSprite(MapBlock):
         self.velocity = (0, 0)  # pixel per second
         self.countdown = self.speed
         self.float_position = [self.rect.x, self.rect.y]
+        self.add_weight(weight)
+
+    def add_weight(self, weight):
+        self.weight = weight
+        # Set up font
+        # Use None for default font or specify a font path
+        font = FONTS['default']
+        text_surface = font.render(
+            str(weight), True, (255, 255, 255))  # White text
+        text_rect = text_surface.get_rect(center=self.image.get_rect().center)
+
+        # Blit the text onto the image
+        self.image.blit(text_surface, text_rect)
 
     def match_target(self):
         self.rect = self.target_rect

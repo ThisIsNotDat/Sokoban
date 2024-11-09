@@ -21,7 +21,7 @@
         "font":
         {
             "name": "default_font",
-            "size": "28",
+            "size": "24",
             "bold": "0",
             "italic": "0",
             "regular_resource": {
