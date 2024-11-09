@@ -302,6 +302,7 @@ class Peach(pygame.sprite.Sprite):
         return "peach"
 
     def load_actions(self, actions):
+        self.actions_buffer = []
         for action in actions:
             if action.lower() == 'u':
                 self.actions_buffer.append(('up', action.isupper()))
