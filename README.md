@@ -17,3 +17,4 @@ $ python main.py
 - Press Enter to solve the map.
 - Press Space to toggle play/pause the solving process.
 - Press R to reset the map to initial state.
+- Press ESC to exit the program.
