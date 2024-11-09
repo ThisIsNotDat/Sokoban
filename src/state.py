@@ -8,7 +8,6 @@ import pygame_gui
 
 from src.map import Map
 from src.settings import DESIRED_FPS, SECOND_PER_FRAME, WIDTH, HEIGHT
-from src.gui import TextBoxWithCaption
 
 
 class StateList(enum.Enum):
@@ -107,8 +106,8 @@ class GamePlay(State):
         self.solving_process = None
         self.file_name = None
         self.gCost = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect((0, 0), (200, 50)),
-            text="Cost: 100",
+            relative_rect=pygame.Rect((0, 0), (192, 48)),
+            text=f"Cost: {0:03}",
             manager=self.manager,
             container=self.manager.get_root_container(),
         )
@@ -136,7 +135,7 @@ class GamePlay(State):
                 self.read_solution()
                 self.solving_process = None
         self.map.update(events, dt)
-        self.gCost.set_text(f"Cost: {self.map.cost}")
+        self.gCost.set_text(f"Cost: {self.map.cost:03}")
 
     def draw(self, screen):
         self.map.draw(screen)
