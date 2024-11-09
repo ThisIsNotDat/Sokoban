@@ -11,6 +11,8 @@ import tracemalloc
 import sys
 import json
 #from memory_profiler import profile
+import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 tracemalloc.start()
 
@@ -72,99 +74,23 @@ class Hungarian:
 
     def __init__(self, n):
         self.n = n
-        self.c = [[self.INF] * n for _ in range(n)]
-        self.fx = [0] * n
-        self.fy = [0] * n
-        self.mX = [-1] * n
-        self.mY = [-1] * n
-        self.trace = [-1] * n
-        self.q = [0] * (n + 10)
-        self.arg = [0] * n
-        self.d = [0] * n
-        self.start = -1
-        self.finish = -1
+        self.mat = np.full((n, n), self.INF)
+        self.mX = np.full(n, -1)
 
     def add_edge(self, u, v, cost):
-        self.c[u][v] = min(self.c[u][v], cost)
+        self.mat[u][v] = cost
+        #self.mat[u][v] = min(self.mat[u][v], cost)
 
     def solve(self):
-        max_iterations = 2 * self.n  # Or any other reasonable limit
-        iteration_count = 0
-
-        for i in range(self.n):
-            self.start = i
-            self.init_bfs()
-            while self.finish == -1:
-                iteration_count += 1
-                if iteration_count > max_iterations:
-                    return self.INF
-                self.find_aug_path()
-                if self.finish == -1:
-                    self.subx_addy()
-            self.enlarge()
-        
-        total_cost = sum(self.c[i][self.mX[i]] for i in range(self.n) if self.mX[i] != -1)
-        return total_cost if all(x != -1 for x in self.mX) else "No complete matching found"
-
-
-    def get_c(self, i, j):
-        return self.c[i][j] - self.fx[i] - self.fy[j]
-
-    def init_bfs(self):
-        self.trace = [-1] * self.n
-        self.ql = self.qr = 0
-        self.q[self.qr] = self.start
-        self.qr += 1
-        for j in range(self.n):
-            self.d[j] = self.get_c(self.start, j)
-            self.arg[j] = self.start
-        self.finish = -1
-
-    def find_aug_path(self):
-        while self.ql < self.qr:
-            i = self.q[self.ql]
-            self.ql += 1
-            for j in range(self.n):
-                if self.trace[j] == -1:
-                    w = self.get_c(i, j)
-                    if w == 0:
-                        self.trace[j] = i
-                        if self.mY[j] == -1:
-                            self.finish = j
-                            return
-                        self.q[self.qr] = self.mY[j]
-                        self.qr += 1
-                    elif self.d[j] > w:
-                        self.d[j] = w
-                        self.arg[j] = i
-
-    def subx_addy(self):
-        delta = min(self.d[j] for j in range(self.n) if self.trace[j] == -1)
-
-        self.fx[self.start] += delta
-        for j in range(self.n):
-            if self.trace[j] != -1:
-                self.fy[j] -= delta
-                self.fx[self.mY[j]] += delta
-            else:
-                self.d[j] -= delta
-
-        for j in range(self.n):
-            if self.trace[j] == -1 and self.d[j] == 0:
-                self.trace[j] = self.arg[j]
-                if self.mY[j] == -1:
-                    self.finish = j
-                    return
-                self.q[self.qr] = self.mY[j]
-                self.qr += 1
-
-    def enlarge(self):
-        while self.finish != -1:
-            i = self.trace[self.finish]
-            nxt = self.mX[i]
-            self.mX[i] = self.finish
-            self.mY[self.finish] = i
-            self.finish = nxt
+        try:
+            row_ind, col_ind = linear_sum_assignment(self.mat)
+            self.mX = col_ind
+            total_cost = self.mat[row_ind, col_ind].sum()
+            return total_cost
+        except ValueError:
+            return self.INF
+            #print(self.mat)
+            #return "No complete matching found"
 
 
 class PrioritizedItem:
@@ -184,7 +110,6 @@ class Input():
     inputAres = {}
     fileNames = []
     mapWall = {}
-    deadLock = {}
     shortest_dist = {}
     @staticmethod
     def is_movable_cell(fileName, vec):
@@ -201,13 +126,6 @@ class Input():
         if (vec[1] < 0 or vec[1] >= len(Input.mapWall[fileName][vec[0]])):
             return False
         return Input.mapWall[fileName][vec[0]][vec[1]]
-    @staticmethod
-    def is_deadLock(fileName, vec):
-        if (vec[0] < 0 or vec[0] >= len(Input.deadLock[fileName])):
-            return False
-        if (vec[1] < 0 or vec[1] >= len(Input.deadLock[fileName][vec[0]])):
-            return False
-        return Input.deadLock[fileName][vec[0]][vec[1]]
     @staticmethod
     def is_valid_cell(fileName, vec, blocked_vec=None):
             """Checks if a cell is valid for traversal."""
@@ -247,7 +165,6 @@ class Input():
         height_map = len(lines[1:])
         width_map = max([len(line) for line in lines[1:]])
         Input.mapWall[fileName] = [[False] * width_map for _ in range(height_map)]
-        Input.deadLock[fileName] = [[False] * width_map for _ in range(height_map)]
 
         weightQueue = Queue()
         for number in lines[0].split():
@@ -272,80 +189,7 @@ class Input():
 
         for vec in Input.inputWall[fileName]:
             Input.mapWall[fileName][vec[0]][vec[1]] = True
-            Input.deadLock[fileName][vec[0]][vec[1]] = True
 
-        # if a stone toward a dead end then it is a dead lock
-        for i in range(height_map):
-            for j in range(width_map):
-                queue = Queue()
-                queue.put(Vector([i, j]))
-                while not queue.empty():
-                    vec = queue.get()
-                    if Input.is_deadLock(fileName, vec) or vec in Input.inputSwitch[fileName] or vec == Input.inputAres[fileName]:
-                        continue
-                    near_deadLock = [Input.is_deadLock(fileName, vec + direct.value) for direct in Direction]
-                    if sum(near_deadLock) >= 3:
-                        Input.deadLock[fileName][vec[0]][vec[1]] = True
-                        for direct in Direction:
-                            queue.put(vec + direct.value)
-
-        # corner not on a switch is a deadLock
-        new_deadLock = []
-        for i in range(height_map):
-            for j in range(width_map):
-                if Vector([i, j]) in Input.inputSwitch[fileName]:
-                    continue
-                myDirection = [Direction.Up,  Direction.Left, Direction.Down, Direction.Right]
-                wall_near = [Input.is_deadLock(fileName, Vector([i, j]) + direct.value) for direct in myDirection]
-                for k in range(4):
-                    if wall_near[k] and wall_near[k - 1]:
-                        new_deadLock.append((i, j))
-                        break
-        for i, j in new_deadLock:
-            Input.deadLock[fileName][i][j] = True
-
-        # x in the below sample is a near-wall deadLock:
-        #   #   #
-        #   #xxx#
-        #   #####
-        # If there is no switch in the near-wall deadLock then it is a deadLock
-        direct_move_wall = []
-        direct_move_wall.append((Direction.Left.value, Direction.Up.value))
-        direct_move_wall.append((Direction.Left.value, Direction.Down.value))
-        direct_move_wall.append((Direction.Down.value, Direction.Left.value))
-        direct_move_wall.append((Direction.Down.value, Direction.Right.value))
-        new_deadLock = []
-        for i in range(height_map):
-            for j in range(width_map):
-                vec = Vector([i, j])
-                if Input.is_deadLock(fileName, vec):
-                    continue
-                for direct_move_base, direct_wall in direct_move_wall:
-                    border = []
-                    for direct_move in [Vector([0, 0]) - direct_move_base, direct_move_base]:
-                        cur = vec
-                        while 0 <= cur[0] and cur[0] < height_map and 0 <= cur[1] and cur[1] < width_map:
-                            if Input.is_deadLock(fileName, cur):
-                                border.append(cur)
-                                break
-                            cur += direct_move
-                    if len(border) < 2:
-                        continue
-
-                    flag = True
-                    cur = border[0] + direct_move_base
-                    while cur != border[1]:
-                        if cur in Input.inputSwitch[fileName] or not Input.is_deadLock(fileName, cur + direct_wall):
-                            flag = False
-                            break
-                        cur += direct_wall
-                    if flag:
-                        cur = border[0] + direct_move_base
-                        while cur != border[1]:
-                            new_deadLock.append(cur)
-                            cur += direct_wall
-        for i, j in new_deadLock:
-            Input.deadLock[fileName][i][j] = True
 
         # shortest_dist is the shortest distance between pairs non-wall cells
         # Beside walls, we will also block 1 cell
@@ -549,8 +393,8 @@ class State:
                 min_cost = float('inf')
                 for direction in Direction:
                     min_cost = min(min_cost, get_pushing_stone_cost(self.name, w, stone_pos, switch_pos, direction))
-                if min_cost != float('inf'):
-                    hungarian.add_edge(i, j, min_cost)
+                #if min_cost != float('inf'):
+                hungarian.add_edge(i, j, min_cost)
 
             #total_cost += min_cost
         total_cost += hungarian.solve()
@@ -613,20 +457,21 @@ class SolverA(Solver):
         self.priorityQueue.put(PrioritizedItem(self.rootNode.priority_value(), self.rootNode))
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
+            if (top.state.isGoal()):
+                return {
+                    'node': top.path,
+                    'node_number': self.node_number,
+                    'cost': top.cost
+                }
             self.node_number += 1
             # if (self.node_number % 100 != 0): 
             #     print ("\033[A                             \033[A")
             #     print(self.node_number)
             #   print(top.path)    
             for child in top.children():
-                if (child.state.isGoal()):
-                    return {
-                        'node': child.path,
-                        'node_number': self.node_number,
-                        'cost': child.cost
-                    }
-                if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
-                    self.reached[str(child.state)] = child.cost
+                str_child = str(child.state)
+                if (str_child not in self.reached.keys() or self.reached[str_child] > child.cost):
+                    self.reached[str_child] = child.cost
                     self.priorityQueue.put(PrioritizedItem(child.priority_value(), child))
         print("FAILURE")
 class SolverBFS(Solver):
@@ -646,8 +491,9 @@ class SolverBFS(Solver):
                         'node_number': self.node_number,
                         'cost': child.cost
                     }
-                if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
-                    self.reached[str(child.state)] = child.cost
+                str_child = str(child.state)
+                if (str_child not in self.reached.keys() or self.reached[str_child] > child.cost):
+                    self.reached[str_child] = child.cost
                     self.priorityQueue.put(PrioritizedItem(child.cost, child))
         print("FAILURE")
 class SolverDFS(Solver):
@@ -667,8 +513,9 @@ class SolverDFS(Solver):
                         'node_number': self.node_number,
                         'cost': child.cost
                     }
-                if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
-                    self.reached[str(child.state)] = child.cost
+                str_child = str(child.state)
+                if (str_child not in self.reached.keys() or self.reached[str_child] > child.cost):
+                    self.reached[str_child] = child.cost
                     self.priorityQueue.put(PrioritizedItem(-child.cost, child))
         print("FAILURE")
 class SolverUCS(Solver):
@@ -687,8 +534,9 @@ class SolverUCS(Solver):
             self.node_number += 1
             # print(self.node_number)
             for child in top.children():
-                if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
-                    self.reached[str(child.state)] = child.cost
+                str_child = str(child.state)
+                if (str_child not in self.reached.keys() or self.reached[str_child] > child.cost):
+                    self.reached[str_child] = child.cost
                     self.priorityQueue.put(PrioritizedItem(child.cost, child))
         print("FAILURE")
 
