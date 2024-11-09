@@ -20,6 +20,14 @@ class Map():
     def cost(self):
         return self.peach.cost
 
+    @property
+    def steps(self):
+        return self.peach.steps
+
+    @property
+    def push_weight(self):
+        return self.peach.push_weight
+
     def load_moves(self, moves):
         assert self.peach is not None, "Peach not found"
         self.peach.load_actions(moves)
@@ -277,7 +285,7 @@ class Peach(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x * TILESIZE
         self.rect.y = y * TILESIZE - TILESIZE // 2
-        self.speed = ANIMATION_SPEED  # 1 tile per second = 32 pixels per second
+        self.speed = ANIMATION_SPEED  # 1 tile per second = 32 pixels per s
         self.target_rect = self.rect
         self.velocity = (0, 0)  # pixel per second
         self.countdown = 0
@@ -286,6 +294,8 @@ class Peach(pygame.sprite.Sprite):
         self.pushing = False
         self.float_positon = [self.rect.x, self.rect.y]
         self.cost = 0
+        self.steps = 0
+        self.push_weight = 0
 
     @property
     def name(self):
@@ -354,6 +364,9 @@ class Peach(pygame.sprite.Sprite):
             self.tile_idx = self.stand_still()
         self.image = self.tiles.get_tile(self.tile_idx)
         self.cost += 1
+        self.steps += 1
+        if not self.pushing:
+            self.push_weight = 0
 
     def stand_still(self):
         if self.direction == "down":
@@ -378,6 +391,7 @@ class Peach(pygame.sprite.Sprite):
             self.tile_idx = self.stand_still()
             self.image = self.tiles.get_tile(self.tile_idx)
             self.velocity = (0, 0)
+            self.pushing = False
 
     def move_and_change_tile(self, dt):
         self.float_position[0] += self.velocity[0] * dt
@@ -399,6 +413,7 @@ class Peach(pygame.sprite.Sprite):
                 if self.pushing and box.velocity == (0, 0):
                     box.move(self.direction)
                     self.cost += box.weight
+                    self.push_weight = box.weight
                     break
 
     def collision_box(self):

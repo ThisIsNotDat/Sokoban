@@ -44,7 +44,7 @@ class SokobanGame:
             self.state.exit_state()
             self.set_state(self.state.next_state)
             if isinstance(self.state, GamePlay):
-                self.state.load_map("TestCases/input_6.txt")
+                self.state.load_map("TestCases/demo.txt")
             self.state.enter_state()
 
     def update(self):

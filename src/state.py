@@ -111,6 +111,18 @@ class GamePlay(State):
             manager=self.manager,
             container=self.manager.get_root_container(),
         )
+        self.gStep = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 48), (192, 48)),
+            text=f"Steps: {0:03}",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gPush = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 96), (192, 48)),
+            text=f"Push: {0:03}",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
         # print number of gui in manager
         print(f"Number of gui in manager: {
               len(self.manager.get_root_container().elements)}")
@@ -137,6 +149,8 @@ class GamePlay(State):
                 self.solving_process = None
         self.map.update(events, dt)
         self.gCost.set_text(f"Cost: {self.map.cost:03}")
+        self.gStep.set_text(f"Steps: {self.map.steps:03}")
+        self.gPush.set_text(f"Push: {self.map.push_weight:03}")
 
     def draw(self, screen):
         self.map.draw(screen)
