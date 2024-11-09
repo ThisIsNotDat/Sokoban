@@ -635,10 +635,10 @@ class SolverBFS(Solver):
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
             self.node_number += 1
-            if (self.node_number % 100 != 0): 
-                print ("\033[A                             \033[A")
-                print(self.node_number)
-            #   print(top.path)    
+            #if (self.node_number % 100 != 0): 
+                #print ("\033[A                             \033[A")
+                #print(self.node_number)
+                #print(top.path)    
             for child in top.children():
                 if (child.state.isGoal()):
                     return {
@@ -656,9 +656,9 @@ class SolverDFS(Solver):
         while (not self.priorityQueue.empty()):
             top = self.priorityQueue.get().getItem()
             self.node_number += 1
-            if (self.node_number % 100 != 0): 
-                print ("\033[A                             \033[A")
-                print(self.node_number)
+            # if (self.node_number % 100 != 0): 
+                # print ("\033[A                             \033[A")
+                # print(self.node_number)
             #   print(top.path)    
             for child in top.children():
                 if (child.state.isGoal()):
@@ -683,9 +683,9 @@ class SolverUCS(Solver):
                     'node_number': self.node_number,
                     'cost': top.cost
                 }
-            print ("\033[A                             \033[A")
+            # print ("\033[A                             \033[A")
             self.node_number += 1
-            print(self.node_number)
+            # print(self.node_number)
             for child in top.children():
                 if (str(child.state) not in self.reached.keys() or self.reached[str(child.state)] > child.cost):
                     self.reached[str(child.state)] = child.cost
