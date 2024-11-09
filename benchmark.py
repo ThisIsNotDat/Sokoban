@@ -6,12 +6,12 @@ def benchmark(folder_path):
     # get all the files in the folder
     files = glob.glob(os.path.join(folder_path, '*.txt'))
     files.sort()
-    #types = ['BFS', 'A*', 'UCS']
-    types = ['A*']
+    types = ['BFS', 'A*', 'UCS']
+    #types = ['A*']
     transitions = ['ares', 'box']
     timeout = 60 * 5 # 5 minutes
     for file in files:
-        if 'diff-rating' not in file:
+        if 'forward-backward' not in file:
             continue
         # call the search.py file with the input file
         for transition in transitions:

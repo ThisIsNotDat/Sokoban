@@ -2,7 +2,7 @@
     "node": "lluU",
     "node_number": 4,
     "cost": 9,
-    "time": 0.038648366928100586,
-    "current_memory": 443898,
-    "peak_memory": 451368
+    "time": 0.013793468475341797,
+    "current_memory": 436058,
+    "peak_memory": 444159
 }

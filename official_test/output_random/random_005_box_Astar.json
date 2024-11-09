@@ -2,7 +2,7 @@
     "node": "rrrrrrrrrruuRR",
     "node_number": 2,
     "cost": 36,
-    "time": 0.1413419246673584,
-    "current_memory": 636239,
-    "peak_memory": 643382
+    "time": 0.040287017822265625,
+    "current_memory": 625572,
+    "peak_memory": 635038
 }

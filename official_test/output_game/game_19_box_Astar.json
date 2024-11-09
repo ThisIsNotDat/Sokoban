@@ -1,8 +1,8 @@
 {
-    "node": "rDurDlDRddrruuuLrdddlllluRurRlluurDldRlddrU",
-    "node_number": 145,
+    "node": "rDurDlDRddrruuuLrdddlllluRurRllddrUluRluurD",
+    "node_number": 195,
     "cost": 53,
-    "time": 0.6114063262939453,
-    "current_memory": 940328,
-    "peak_memory": 954069
+    "time": 0.5846512317657471,
+    "current_memory": 972510,
+    "peak_memory": 984150
 }
