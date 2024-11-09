@@ -165,13 +165,11 @@ class GamePlay(State):
                 elif event.key == pygame.K_RETURN:
                     self.solve_map(self.map_file)
                 elif event.key == pygame.K_RIGHT:
-                    self.current_map = (
-                        self.current_map + 1) % len(self.test_paths)
-                    self.load_map(self.test_paths[self.current_map])
+                    self.change_map((
+                        self.current_map + 1) % len(self.test_paths))
                 elif event.key == pygame.K_LEFT:
-                    self.current_map = (
-                        self.current_map - 1) % len(self.test_paths)
-                    self.load_map(self.test_paths[self.current_map])
+                    self.change_map(
+                        (self.current_map - 1) % len(self.test_paths))
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
                 logging.info("Solving process finished")
@@ -182,12 +180,24 @@ class GamePlay(State):
         self.gStep.set_text(f"Steps: {self.map.steps:03}")
         self.gPush.set_text(f"Push: {self.map.push_weight:03}")
 
+    def change_map(self, new_map):
+        self.current_map = new_map
+        self.load_map(self.test_paths[self.current_map])
+        if self.solving_process is not None:
+            self.solving_process.kill()
+            self.solving_process = None
+            print("Kill solve process")
+
     def draw(self, screen):
         self.map.draw(screen)
         super().draw(screen)
         # pygame.display.set_caption("Sokoban - Visualization")
 
     def solve_map(self, map_file):
+        if self.solving_process is not None:
+            logging.info("A solving process is running")
+            return
+        self.map.reset()
         logging.info(f"Solving map {map_file}")
         self.solving_process = subprocess.Popen(
             f'python search.py --input {map_file} --type A*', shell=True)
@@ -223,6 +233,7 @@ class GamePlay(State):
         if self.solving_process is not None:
             self.solving_process.kill()
             self.solving_process = None
+            print("Kill solve process")
 
     def enter_state(self):
         return super().enter_state()
