@@ -476,15 +476,15 @@ class SolverA(Solver):
         print("FAILURE")
 class SolverBFS(Solver):
     def expand(self):
-        self.priorityQueue.put(PrioritizedItem(self.rootNode.cost, self.rootNode))
+        self.priorityQueue.put(PrioritizedItem(0, self.rootNode))
         while (not self.priorityQueue.empty()):
-            top = self.priorityQueue.get().getItem()
+            top = self.priorityQueue.get()
             self.node_number += 1
             #if (self.node_number % 100 != 0): 
                 #print ("\033[A                             \033[A")
                 #print(self.node_number)
                 #print(top.path)    
-            for child in top.children():
+            for child in top.getItem().children():
                 if (child.state.isGoal()):
                     return {
                         'node': child.path,
@@ -494,19 +494,19 @@ class SolverBFS(Solver):
                 str_child = str(child.state)
                 if (str_child not in self.reached.keys() or self.reached[str_child] > child.cost):
                     self.reached[str_child] = child.cost
-                    self.priorityQueue.put(PrioritizedItem(child.cost, child))
+                    self.priorityQueue.put(PrioritizedItem(top.priority + 1, child))
         print("FAILURE")
 class SolverDFS(Solver):
     def expand(self):
-        self.priorityQueue.put(PrioritizedItem(-self.rootNode.cost, self.rootNode))
+        self.priorityQueue.put(PrioritizedItem(0, self.rootNode))
         while (not self.priorityQueue.empty()):
-            top = self.priorityQueue.get().getItem()
+            top = self.priorityQueue.get()
             self.node_number += 1
             # if (self.node_number % 100 != 0): 
                 # print ("\033[A                             \033[A")
                 # print(self.node_number)
             #   print(top.path)    
-            for child in top.children():
+            for child in top.getItem().children():
                 if (child.state.isGoal()):
                     return {
                         'node': child.path,
@@ -516,7 +516,7 @@ class SolverDFS(Solver):
                 str_child = str(child.state)
                 if (str_child not in self.reached.keys() or self.reached[str_child] > child.cost):
                     self.reached[str_child] = child.cost
-                    self.priorityQueue.put(PrioritizedItem(-child.cost, child))
+                    self.priorityQueue.put(PrioritizedItem(top.priority - 1, child))
         print("FAILURE")
 class SolverUCS(Solver):
     def expand(self):
