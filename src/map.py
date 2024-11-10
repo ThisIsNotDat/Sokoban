@@ -150,6 +150,9 @@ class Map():
         print(f"Playing: {self.playing}")
 
     def update(self, events, dt):
+        if self.peach is not None and self.peach.solving:
+            self.peach.update(self, dt)
+            return
         if not self.playing:
             return
 
@@ -294,6 +297,7 @@ class Peach(pygame.sprite.Sprite):
         self.cost = 0
         self.steps = 0
         self.push_weight = 0
+        self.solving = False
 
     @property
     def name(self):
@@ -310,8 +314,18 @@ class Peach(pygame.sprite.Sprite):
                 self.actions_buffer.append(('left', action.isupper()))
             elif action.lower() == 'r':
                 self.actions_buffer.append(('right', action.isupper()))
+        self.tile_idx = 2
+        self.image = self.tiles.get_tile(self.tile_idx)
 
     def update(self, map, dt):
+        if self.solving:
+            self.animation_dt += dt
+            if self.animation_dt >= self.speed:
+                self.tile_idx = (self.tile_idx + 1) % 12
+                # print(self.tile_idx)
+                self.image = self.tiles.get_tile(self.tile_idx)
+                self.animation_dt = 0
+            return
         if self.velocity:
             self.countdown -= dt
             self.animation_dt += dt

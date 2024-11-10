@@ -301,6 +301,7 @@ class GamePlay(State):
                 self.read_solution()
                 self.solving_process = None
                 self.change_solve_state("finished")
+                self.map.peach.solving = False
         self.map.update(events, dt)
         self.updateGUI()
         super().update(events, dt)
@@ -328,6 +329,7 @@ class GamePlay(State):
             return
         self.change_solve_state("solving")
         self.map.reset()
+        self.map.peach.solving = True
         logging.info(f"Solving map {map_file}")
         self.solving_process = subprocess.Popen(
             f'python search_all.py --input {map_file}', shell=True)
