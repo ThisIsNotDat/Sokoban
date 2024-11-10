@@ -267,6 +267,11 @@ class GamePlay(State):
     def reset(self):
         self.map.reset()
         self.gPlayButton.set_text("Play")
+        transition = self.gMove.get_single_selection()
+        algorithm = self.gAlgorithm.get_single_selection()
+        transition = "box" if transition == "Box" else "ares"
+        algorithm = "Astar" if algorithm == "A*" else algorithm
+        self.read_solution(transition, algorithm)
 
     def process_event(self, event):
         if event.type == pygame.KEYUP:
@@ -284,6 +289,9 @@ class GamePlay(State):
                 if event.ui_element == self.gChooseMap:
                     self.change_map(os.path.join(
                         TEST_FOLDER, event.text))
+                if event.ui_element == self.gAlgorithm \
+                        or event.ui_element == self.gMove:
+                    self.reset()
             if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                 if event.ui_element == self.gSolveButton:
                     self.solve_map(self.map_file)
@@ -298,10 +306,10 @@ class GamePlay(State):
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
                 logging.info("Solving process finished")
-                self.read_solution()
                 self.solving_process = None
                 self.change_solve_state("finished")
                 self.map.peach.solving = False
+                self.reset()
         self.map.update(events, dt)
         self.updateGUI()
         super().update(events, dt)
@@ -334,8 +342,10 @@ class GamePlay(State):
         self.solving_process = subprocess.Popen(
             f'python search_all.py --input {map_file}', shell=True)
 
-    def read_solution(self):
-        with open(os.path.join(TEST_FOLDER, f"output/{self.file_name}_ares_Astar.json"), "r") as f:
+    def read_solution(self, transition, algorithm):
+        print(f"Reading solution {transition} {algorithm}")
+        with open(os.path.join(
+                TEST_FOLDER, f"output/{self.file_name}_{transition}_{algorithm}.json"), "r") as f:
             data = json.load(f)
             self.map.load_moves(data["node"])
             print("Solution:", data["node"])

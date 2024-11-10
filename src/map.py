@@ -314,7 +314,7 @@ class Peach(pygame.sprite.Sprite):
                 self.actions_buffer.append(('left', action.isupper()))
             elif action.lower() == 'r':
                 self.actions_buffer.append(('right', action.isupper()))
-        self.tile_idx = 2
+        self.tile_idx = 1
         self.image = self.tiles.get_tile(self.tile_idx)
 
     def update(self, map, dt):
