@@ -261,30 +261,33 @@ class GamePlay(State):
         self.map.reset()
         self.gPlayButton.set_text("Play")
 
+    def process_event(self, event):
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_ESCAPE:  # Start game on Enter
+                self.next_state = StateList.quitting
+            if self.solve_state == "finished":
+                if event.key == pygame.K_r:
+                    # R to reset
+                    self.reset()
+                elif event.key == pygame.K_SPACE:
+                    self.toggle_play()
+        if event.type == pygame.USEREVENT:
+            if event.user_type == pygame_gui.\
+                    UI_SELECTION_LIST_NEW_SELECTION:
+                if event.ui_element == self.gChooseMap:
+                    self.change_map(os.path.join(
+                        TEST_FOLDER, event.text))
+            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == self.gSolveButton:
+                    self.solve_map(self.map_file)
+                if event.ui_element == self.gPlayButton:
+                    self.toggle_play()
+                if event.ui_element == self.gResetButton:
+                    self.reset()
+
     def update(self, events, dt):
         for event in events:
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_ESCAPE:  # Start game on Enter
-                    self.next_state = StateList.quitting
-                if self.solve_state == "finished":
-                    if event.key == pygame.K_r:
-                        # R to reset
-                        self.reset()
-                    elif event.key == pygame.K_SPACE:
-                        self.toggle_play()
-            if event.type == pygame.USEREVENT:
-                if event.user_type == pygame_gui.\
-                        UI_SELECTION_LIST_NEW_SELECTION:
-                    if event.ui_element == self.gChooseMap:
-                        self.change_map(os.path.join(
-                            TEST_FOLDER, event.text))
-                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                    if event.ui_element == self.gSolveButton:
-                        self.solve_map(self.map_file)
-                    if event.ui_element == self.gPlayButton:
-                        self.toggle_play()
-                    if event.ui_element == self.gResetButton:
-                        self.reset()
+            self.process_event(event)
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
                 logging.info("Solving process finished")
