@@ -115,6 +115,10 @@ class GamePlay(State):
             format=format, level=logging.INFO, datefmt="%H:%M:%S")
         self.solving_process = None
         self.file_name = None
+        self.test_paths = []
+        self.current_map = 7
+        self.load_test_paths()
+        self.refresh = False
         self.gCost = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((0, 0), (192, 48)),
             text=f"Cost: {0:03}",
@@ -133,10 +137,19 @@ class GamePlay(State):
             manager=self.manager,
             container=self.manager.get_root_container(),
         )
-        self.test_paths = []
-        self.current_map = 7
-        self.load_test_paths()
-        self.refresh = False
+        self.gMapLabel = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 164), (192, 48)),
+            text="Choose Map",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gChooseMap = pygame_gui.elements.UISelectionList(
+            relative_rect=pygame.Rect((0, 212), (192, 192)),
+            item_list=[path.split("/")[-1] for path in self.test_paths],
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+            default_selection=self.test_paths[self.current_map].split("/")[-1],
+        )
 
     def load_test_paths(self):
         for file in os.listdir(TEST_FOLDER):
@@ -155,6 +168,11 @@ class GamePlay(State):
         self.file_name = map_file.split("/")[-1].split(".")[0]
         self.map_file = map_file
         self.refresh = True
+        event_data = {'user_type': pygame_gui.UI_BUTTON_PRESSED,
+                      'ui_element': map_file.split("/")[-1]}
+        press_list_item_event = pygame.event.Event(
+            pygame.USEREVENT, event_data)
+        self.manager.process_events(press_list_item_event)
         print("Loaded map", map_file)
 
     def update(self, events, dt):
@@ -165,12 +183,11 @@ class GamePlay(State):
                     self.next_state = StateList.quitting
                 elif event.key == pygame.K_RETURN:
                     self.solve_map(self.map_file)
-                elif event.key == pygame.K_RIGHT:
-                    self.change_map((
-                        self.current_map + 1) % len(self.test_paths))
-                elif event.key == pygame.K_LEFT:
-                    self.change_map(
-                        (self.current_map - 1) % len(self.test_paths))
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.\
+                        UI_SELECTION_LIST_NEW_SELECTION:
+                    self.change_map(os.path.join(
+                        TEST_FOLDER, self.gChooseMap.get_single_selection()))
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
                 logging.info("Solving process finished")
@@ -182,7 +199,10 @@ class GamePlay(State):
         self.gPush.set_text(f"Push: {self.map.push_weight:03}")
 
     def change_map(self, new_map):
-        self.current_map = new_map
+        if isinstance(new_map, int):
+            self.current_map = new_map
+        else:
+            self.current_map = self.test_paths.index(new_map)
         self.load_map(self.test_paths[self.current_map])
         self.kill_solving_process()
 
