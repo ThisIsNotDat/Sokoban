@@ -6,7 +6,7 @@ def benchmark(folder_path):
     # get all the files in the folder
     files = glob.glob(os.path.join(folder_path, '*.txt'))
     files.sort()
-    types = ['BFS', 'A*', 'UCS']
+    types = ['DFS', 'BFS', 'A*', 'UCS']
     #types = ['A*']
     transitions = ['ares', 'box']
     timeout = 60 * 5 # 5 minutes
