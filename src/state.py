@@ -261,7 +261,7 @@ class GamePlay(State):
             # self.gSolveButton.rebuild()
 
     def updateGUI(self):
-        self.gCost.set_text(f"Cost: {self.map.cost:03}")
+        self.gCost.set_text(f"Weight: {self.map.cost:03}")
         self.gStep.set_text(f"Steps: {self.map.steps:03}")
         self.gPush.set_text(f"Push: {self.map.push_weight:03}")
 
