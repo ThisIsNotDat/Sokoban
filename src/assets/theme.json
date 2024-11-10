@@ -16,12 +16,12 @@
         "colours": {
             "dark_bg": "#172b3c",
             "normal_text": "#f0a53b",
-            "text_shadow": "#6b3931"
+            "text_shadow": "#69352c"
         },
         "font":
         {
             "name": "default_font",
-            "size": "18",
+            "size": "20",
             "bold": "0",
             "italic": "0",
             "regular_resource": {
@@ -85,10 +85,10 @@
             "hovered_text": "#cccccc",
             "selected_text": "#cccccc",
             "active_text": "#cccccc",
-            "normal_text_shadow": "#6b3931",
-            "hovered_text_shadow": "#6b3931",
-            "selected_text_shadow": "#6b3931",
-            "active_text_shadow": "#6b3931"
+            "normal_text_shadow": "#69352c",
+            "hovered_text_shadow": "#69352c",
+            "selected_text_shadow": "#69352c",
+            "active_text_shadow": "#69352c"
         },
         "font":
         {
