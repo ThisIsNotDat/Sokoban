@@ -57,7 +57,7 @@ algorithms on the test `demo_test/0_demo_00.txt`, you can run
 python search_all.py --input demo_test/0_demo_00.txt
 ```
 The result would be stored in two text files:
-- `demo_test/output/0_demo_00 _ares_output.txt`
+- `demo_test/output/0_demo_00_ares_output.txt`
 - `demo_test/output/0_demo_00_box_output.txt`
 , which is output of 'Ares-moving' and 'box-moving', respectively.
 
