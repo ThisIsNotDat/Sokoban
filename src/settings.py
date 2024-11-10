@@ -13,4 +13,4 @@ PEACH_HEIGHT = round(40 * SCALE_FACTOR)
 # the smaller the faster the animation, 0.5 means 1 action takes 0.5 seconds
 ANIMATION_SPEED = 0.25
 
-TEST_FOLDER = "./maps/"
+TEST_FOLDER = "./official_test/"

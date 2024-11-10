@@ -194,6 +194,20 @@ class GamePlay(State):
             manager=self.manager,
             container=self.manager.get_root_container(),
         )
+        self.gNoSolutionWindow = pygame_gui.elements.UIWindow(
+            pygame.Rect((WIDTH // 2 - 192, HEIGHT // 2 - 50), (384, 100)),
+            self.manager,
+            window_display_title="No Solution Found",
+            object_id="#no_solution_window",
+            resizable=True,
+        )
+        self.gNoSolutionContent = pygame_gui.elements.UITextBox(
+            relative_rect=pygame.Rect((0, 0), (384, 100)),
+            html_text="This map has no solution, please choose another map",
+            manager=self.manager,
+            container=self.gNoSolutionWindow,
+        )
+        self.gNoSolutionWindow.hide()
 
     def load_test_paths(self):
         temp_list = []
@@ -201,13 +215,7 @@ class GamePlay(State):
             if file.endswith(".txt"):
                 temp_list.append(os.path.join(TEST_FOLDER, file))
                 print(f"Found test file: {file}")
-
-        for path in temp_list:
-            if path.split("/")[-1].startswith("game"):
-                self.test_paths.append(path)
-        for path in temp_list:
-            if not path.split("/")[-1].startswith("game"):
-                self.test_paths.append(path)
+        self.test_paths = temp_list
 
     def load_map(self, map_file):
         print("Loading map", map_file)
@@ -299,6 +307,9 @@ class GamePlay(State):
                     self.toggle_play()
                 if event.ui_element == self.gResetButton:
                     self.reset()
+            if event.user_type == pygame_gui.UI_WINDOW_CLOSE:
+                if event.ui_element == self.gNoSolutionWindow:
+                    self.refresh = True
 
     def update(self, events, dt):
         for event in events:
@@ -346,9 +357,18 @@ class GamePlay(State):
         print(f"Reading solution {transition} {algorithm}")
         with open(os.path.join(
                 TEST_FOLDER, f"output/{self.file_name}_{transition}_{algorithm}.json"), "r") as f:
-            data = json.load(f)
-            self.map.load_moves(data["node"])
-            print("Solution:", data["node"])
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                print("No solution found")
+                self.gNoSolutionWindow.show()
+                return
+            if "node" in data:
+                self.map.load_moves(data["node"])
+                print("Solution:", data["node"])
+            else:
+                print("No solution found")
+                self.gNoSolutionWindow.show()
 
     def loop(self, screen):
         """The main game loop. This is where the game logic is executed."""
