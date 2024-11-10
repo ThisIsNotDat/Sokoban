@@ -3,7 +3,7 @@
         "default": {
             "default_font": {
                 "file": "src/assets/fonts/VCR_OSD_MONO_1.001.ttf",
-                "size": 30
+                "size": 24
             }
         }
     },
@@ -21,7 +21,7 @@
         "font":
         {
             "name": "default_font",
-            "size": "24",
+            "size": "18",
             "bold": "0",
             "italic": "0",
             "regular_resource": {
@@ -40,11 +40,12 @@
     {
         "colours":
         {
-            "dark_bg":"#2b506f"
+            "dark_bg":"#2b506f",
+            "normal_border": "#282b3b"
         },
         "misc":
         {
-            "border_width": "0",
+            "border_width": "1",
             "list_item_height": "30"
         }
     },

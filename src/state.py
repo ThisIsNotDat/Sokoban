@@ -150,6 +150,20 @@ class GamePlay(State):
             container=self.manager.get_root_container(),
             default_selection=self.test_paths[self.current_map].split("/")[-1],
         )
+        self.gAlgoLabel = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 404), (192, 48)),
+            text="Algorithm",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gAlgorithm = pygame_gui.elements.UISelectionList(
+            relative_rect=pygame.Rect((0, 452), (192, 32*4)),
+            item_list=['DFS', 'BFS', 'A*', 'UCS'],
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+            default_selection="A*",
+        )
+        self.gAlgorithm.list_item_height = 4
 
     def load_test_paths(self):
         for file in os.listdir(TEST_FOLDER):
