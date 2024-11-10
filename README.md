@@ -1,6 +1,6 @@
 ## How to run
 ```bash
-$ conda create -n <env_name> python=3.10
+$ conda create -n <env_name> python=3.12
 $ conda activate <env_name>
 ```
 
