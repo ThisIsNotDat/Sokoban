@@ -203,7 +203,7 @@ class GamePlay(State):
         )
         self.gNoSolutionContent = pygame_gui.elements.UITextBox(
             relative_rect=pygame.Rect((0, 0), (384, 100)),
-            html_text="This map has no solution, please choose another map",
+            html_text="This map has no solution, or the search algorithm ran out of time limit.",
             manager=self.manager,
             container=self.gNoSolutionWindow,
         )
@@ -355,20 +355,27 @@ class GamePlay(State):
 
     def read_solution(self, transition, algorithm):
         print(f"Reading solution {transition} {algorithm}")
-        with open(os.path.join(
-                TEST_FOLDER, f"output/{self.file_name}_{transition}_{algorithm}.json"), "r") as f:
-            try:
-                data = json.load(f)
-            except json.JSONDecodeError:
-                print("No solution found")
-                self.gNoSolutionWindow.show()
-                return
-            if "node" in data:
-                self.map.load_moves(data["node"])
-                print("Solution:", data["node"])
-            else:
-                print("No solution found")
-                self.gNoSolutionWindow.show()
+        try:
+            with open(os.path.join(
+                    TEST_FOLDER, f"output/{self.file_name}_{transition}_{algorithm}.json"), "r") as f:
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:
+                    print("No solution found")
+                    self.gNoSolutionWindow.show()
+                    self.map.load_moves("")
+                    return
+                if "node" in data:
+                    self.map.load_moves(data["node"])
+                    print("Solution:", data["node"])
+                else:
+                    print("No solution found")
+                    self.gNoSolutionWindow.show()
+                    self.map.load_moves("")
+        except FileNotFoundError:
+            print("File not exists, must be time limit exceeded")
+            self.gNoSolutionWindow.show()
+            self.map.load_moves("")
 
     def loop(self, screen):
         """The main game loop. This is where the game logic is executed."""

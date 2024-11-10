@@ -7,10 +7,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input', help='input file', required=True)
     parser.add_argument('--timeout', help='timeout',
-                        required=False, default=120, type=int)
+                        required=False, default=40, type=int)
     args = parser.parse_args()
     # call ares_move.py or box_move.py based on the transition type
-    
 
     # call the python file with the given arguments
     for type in ['A*', 'UCS', 'DFS', 'BFS']:
@@ -19,12 +18,12 @@ if __name__ == '__main__':
             try:
                 print(f'Running {type} search')
                 subprocess.run(f'python {python_file} --input {args.input} --type {
-                            type}', timeout=args.timeout, check=True)
+                    type}', timeout=args.timeout, check=True)
             except subprocess.TimeoutExpired:
                 print('Timeout: The search is taking too long')
             except subprocess.CalledProcessError as e:
                 print('Error:', e)
-    
+
     # read the json output files
 
     current_dir = os.path.dirname(args.input)
@@ -32,7 +31,8 @@ if __name__ == '__main__':
     test_name = os.path.basename(args.input).split('.')[0]
     print(f'Output directory: {output_dir}')
     for transition in ['ares', 'box']:
-        text_output_file = os.path.join(current_dir, 'output', f'{test_name}_{transition}_output.txt')
+        text_output_file = os.path.join(current_dir, 'output', f'{
+                                        test_name}_{transition}_output.txt')
         with open(text_output_file, 'w') as f:
             output_files = glob.glob(os.path.join(output_dir, '*.json'))
             output_files.sort()
@@ -50,15 +50,11 @@ if __name__ == '__main__':
                     num_steps = len(path)
                     weight = json_data['cost']
                     node = json_data['node_number']
-                    time = json_data['time'] # time is currently in seconds
-                    mem = json_data['peak_memory'] # memory is in bytes
+                    time = json_data['time']  # time is currently in seconds
+                    mem = json_data['peak_memory']  # memory is in bytes
                     # Should output the following format
-                    # Steps: 16, Weight: 695, Node: 4321, Time (ms): 58.12, Memory (MB): 12.56 
+                    # Steps: 16, Weight: 695, Node: 4321, Time (ms): 58.12, Memory (MB): 12.56
                     # uLulDrrRRRRRRurD
-                    f.write(f'Steps: {num_steps}, Weight: {weight}, Node: {node}, Time (ms): {time*1000:.2f}, Memory (MB): {mem/1024/1024:.2f}\n')
+                    f.write(f'Steps: {num_steps}, Weight: {weight}, Node: {node}, Time (ms): {
+                            time*1000:.2f}, Memory (MB): {mem/1024/1024:.2f}\n')
                     f.write(f'{path}\n')
-
-
-
-
-
