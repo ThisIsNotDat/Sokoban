@@ -1,3 +1,6 @@
+## Demo video 
+[![Demo video](https://img.youtube.com/vi/HoPs7_Rpnqg/maxresdefault.jpg)](https://www.youtube.com/watch?v=HoPs7_Rpnqg)
+
 ## How to run
 - Clone the repository
 ```bash
