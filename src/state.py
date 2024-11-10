@@ -227,7 +227,6 @@ class GamePlay(State):
             self.gMoveLabel.hide()
             self.gMove.hide()
             self.gSolveButton.set_text("Solve")
-            self.gSolveButton.rebuild()
             self.gPlayButton.hide()
             self.gResetButton.hide()
             # self.gSolveButton.rebuild()
@@ -235,7 +234,6 @@ class GamePlay(State):
             # self.gAlgoLabel.rebuild()
         elif self.solve_state == "solving":
             self.gSolveButton.set_text("Solving")
-            self.gSolveButton.rebuild()
         elif self.solve_state == "finished":
             self.refresh = True
             self.gSolveButton.hide()
@@ -252,6 +250,17 @@ class GamePlay(State):
         self.gStep.set_text(f"Steps: {self.map.steps:03}")
         self.gPush.set_text(f"Push: {self.map.push_weight:03}")
 
+    def toggle_play(self):
+        self.map.toggle_play()
+        if self.map.playing:
+            self.gPlayButton.set_text("Pause")
+        else:
+            self.gPlayButton.set_text("Play")
+
+    def reset(self):
+        self.map.reset()
+        self.gPlayButton.set_text("Play")
+
     def update(self, events, dt):
         for event in events:
             if event.type == pygame.KEYUP:
@@ -260,9 +269,9 @@ class GamePlay(State):
                 if self.solve_state == "finished":
                     if event.key == pygame.K_r:
                         # R to reset
-                        self.map.reset()
+                        self.reset()
                     elif event.key == pygame.K_SPACE:
-                        self.map.toggle_play()
+                        self.toggle_play()
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.\
                         UI_SELECTION_LIST_NEW_SELECTION:
@@ -273,9 +282,9 @@ class GamePlay(State):
                     if event.ui_element == self.gSolveButton:
                         self.solve_map(self.map_file)
                     if event.ui_element == self.gPlayButton:
-                        self.map.toggle_play()
+                        self.toggle_play()
                     if event.ui_element == self.gResetButton:
-                        self.map.reset()
+                        self.reset()
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
                 logging.info("Solving process finished")
