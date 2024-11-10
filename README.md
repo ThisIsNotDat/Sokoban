@@ -18,10 +18,48 @@ $ conda activate <env_name>
 $ pip install -r requirements.txt
 ```
 
+### Run the game
 - Run the `main.py` file
 ```bash
 $ python main.py
 ```
+
+### Run the search algorithms
+- To run the search algorithms directly, run the following command.
+```bash
+python search.py --input <input_file> --transition <transition_type> --type <
+type> --timeout <timeout>
+```
+- For example, to run the A* algorithm with 'box-moving' transition model on the test `demo_test/0_demo_00.txt`
+with the time limit of 120 seconds, you can run
+```bash
+python search.py --input official_test/0_demo_00.txt --transition box --type A*
+--timeout 120
+```
+
+- The result of running `search.py` would be JSON files in the following format:
+```json
+{
+    "node": "llDD",
+    "node_number": 2,
+    "cost": 8,
+    "time": 0.017000198364257812,
+    "current_memory": 434629,
+    "peak_memory": 442627
+}
+```
+
+- To generate the `.txt` output file like the requirement, please run search_all.py. This will execute
+all types of transition models and algorithms for a single input file and combine the result into
+2 text files, each being the corresponding output of a transition model. For example, to run
+algorithms on the test `demo_test/0_demo_00.txt`, you can run
+```bash
+python search_all.py --input demo_test/0_demo_00.txt
+```
+The result would be stored in two text files:
+- `demo_test/output/0_demo_00 _ares_output.txt`
+- `demo_test/output/0_demo_00_box_output.txt`
+, which is output of 'Ares-moving' and 'box-moving', respectively.
 
 ## How to use 
 Use the buttons on GUI, or the following keys to interact with the game:
