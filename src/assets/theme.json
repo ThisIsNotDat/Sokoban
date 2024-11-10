@@ -14,7 +14,7 @@
     },
     "label": {
         "colours": {
-            "dark_bg": "#2b506f",
+            "dark_bg": "#172b3c",
             "normal_text": "#f0a53b",
             "text_shadow": "#6b3931"
         },
@@ -40,7 +40,7 @@
     {
         "colours":
         {
-            "dark_bg":"#2b506f",
+            "dark_bg":"#172b3c",
             "normal_border": "#282b3b"
         },
         "misc":
@@ -63,13 +63,57 @@
             }
         },
         "colours": {
-            "normal_bg": "#2b506f",
+            "normal_bg": "#172b3c",
             "normal_text": "#f0a53b",
-            "normal_border": "#282b3b"
+            "normal_border": "#030608",
+            "hovered_border": "#d05721",
+            "selected_border": "#d05721"
         },
         "misc":
         {
-            "border_width": "2"
+            "border_width": "1",
+            "text_shadow": "0"
+        }
+    },
+    "button": {
+        "colours": {
+            "normal_bg": "#d05721",
+            "hovered_bg": "#a33b1d",
+            "selected_bg": "#f0a53b",
+            "active_bg": "#f0a53b",
+            "normal_text": "#cccccc",
+            "hovered_text": "#cccccc",
+            "selected_text": "#cccccc",
+            "active_text": "#cccccc",
+            "normal_text_shadow": "#6b3931",
+            "hovered_text_shadow": "#6b3931",
+            "selected_text_shadow": "#6b3931",
+            "active_text_shadow": "#6b3931"
+        },
+        "font":
+        {
+            "name": "default_font",
+            "size": "20",
+            "bold": "0",
+            "italic": "0",
+            "regular_resource": {
+                "package": "src.assets.fonts",
+                "resource": "VCR_OSD_MONO_1.001.ttf"
+            }
+        },
+        "misc":
+        {
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "5",
+            "shadow_width": "1",
+            "border_width": "2",
+            "text_shadow_size": "1",
+            "text_shadow_offset": "0.5,0",
+            "state_transitions":
+            {
+                "normal_hovered": "0.1",
+                "hovered_normal": "0.1"
+            }
         }
     }
 }

@@ -119,6 +119,7 @@ class GamePlay(State):
         self.current_map = 7
         self.load_test_paths()
         self.refresh = False
+        self.solve_state = "unsolved"
         self.gCost = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((0, 0), (192, 48)),
             text=f"Cost: {0:03}",
@@ -176,6 +177,12 @@ class GamePlay(State):
             container=self.manager.get_root_container(),
             default_selection="Ares Move",
         )
+        self.gSolveButton = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((0, 414), (192, 48)),
+            text="Solve",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
 
     def load_test_paths(self):
         for file in os.listdir(TEST_FOLDER):
@@ -194,35 +201,63 @@ class GamePlay(State):
         self.file_name = map_file.split("/")[-1].split(".")[0]
         self.map_file = map_file
         self.refresh = True
-        event_data = {'user_type': pygame_gui.UI_BUTTON_PRESSED,
-                      'ui_element': map_file.split("/")[-1]}
-        press_list_item_event = pygame.event.Event(
-            pygame.USEREVENT, event_data)
-        self.manager.process_events(press_list_item_event)
+        self.change_solve_state("unsolved")
         print("Loaded map", map_file)
 
+    def change_solve_state(self, state):
+        print("Change solve state to", state)
+        self.solve_state = state
+        if self.solve_state == "unsolved":
+            self.gSolveButton.show()
+            self.refresh = True
+            self.gAlgoLabel.hide()
+            self.gAlgorithm.hide()
+            self.gMoveLabel.hide()
+            self.gMove.hide()
+            self.gSolveButton.set_text("Solve")
+            self.gSolveButton.rebuild()
+            # self.gSolveButton.rebuild()
+            # self.gAlgorithm.rebuild()
+            # self.gAlgoLabel.rebuild()
+        elif self.solve_state == "solving":
+            self.gSolveButton.set_text("Solving")
+            self.gSolveButton.rebuild()
+        elif self.solve_state == "finished":
+            self.refresh = True
+            self.gSolveButton.hide()
+            self.gMoveLabel.show()
+            self.gMove.show()
+            self.gAlgoLabel.show()
+            self.gAlgorithm.show()
+            self.gSolveButton.rebuild()
+
+    def updateGUI(self):
+        self.gCost.set_text(f"Cost: {self.map.cost:03}")
+        self.gStep.set_text(f"Steps: {self.map.steps:03}")
+        self.gPush.set_text(f"Push: {self.map.push_weight:03}")
+
     def update(self, events, dt):
-        super().update(events, dt)
         for event in events:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:  # Start game on Enter
                     self.next_state = StateList.quitting
-                elif event.key == pygame.K_RETURN:
-                    self.solve_map(self.map_file)
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.\
                         UI_SELECTION_LIST_NEW_SELECTION:
                     self.change_map(os.path.join(
                         TEST_FOLDER, self.gChooseMap.get_single_selection()))
+                if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                    if event.ui_element == self.gSolveButton:
+                        self.solve_map(self.map_file)
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
                 logging.info("Solving process finished")
                 self.read_solution()
                 self.solving_process = None
+                self.change_solve_state("finished")
         self.map.update(events, dt)
-        self.gCost.set_text(f"Cost: {self.map.cost:03}")
-        self.gStep.set_text(f"Steps: {self.map.steps:03}")
-        self.gPush.set_text(f"Push: {self.map.push_weight:03}")
+        self.updateGUI()
+        super().update(events, dt)
 
     def change_map(self, new_map):
         if isinstance(new_map, int):
@@ -233,14 +268,19 @@ class GamePlay(State):
         self.kill_solving_process()
 
     def draw(self, screen):
+        if self.refresh:
+            print("Refresh")
+            self.map.draw(screen, full=True)
+            self.refresh = False
         self.map.draw(screen)
         super().draw(screen)
         # pygame.display.set_caption("Sokoban - Visualization")
 
     def solve_map(self, map_file):
-        if self.solving_process is not None:
+        if self.solve_state != "unsolved":
             logging.info("A solving process is running")
             return
+        self.change_solve_state("solving")
         self.map.reset()
         logging.info(f"Solving map {map_file}")
         self.solving_process = subprocess.Popen(
@@ -264,9 +304,6 @@ class GamePlay(State):
             # Pass delta time to update method
             self.update(events, delta_time)
             # delta_time -= SECOND_PER_FRAME
-            if self.refresh:
-                self.map.draw(screen, full=True)
-                self.refresh = False
             self.draw(screen)
             pygame.display.set_caption(
                 f"Sokoban Visualization - FPS: {clock.get_fps()}")

@@ -135,13 +135,15 @@ class Map():
 
     def draw(self, screen, full=False):
         if full:
+            print("Fill screen")
             screen.fill((0, 0, 0))
             self.map_sprites.draw(screen)
         else:
             self.non_water_sprites.draw(screen)
             self.target_sprites.draw(screen)
             self.box_sprites.draw(screen)
-            self.peach.draw(screen)
+
+        self.peach.draw(screen)
 
     def update(self, events, dt):
         for event in events:
