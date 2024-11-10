@@ -156,11 +156,9 @@ class Map():
         if not self.playing:
             return
 
-        if self.peach is not None:
-            if self.peach.pushing:
-                for box in self.box_sprites:
-                    if box.velocity != (0, 0):
-                        box.update(self, dt)
+        for box in self.box_sprites:
+            if box.velocity != (0, 0):
+                box.update(self, dt)
         self.peach.update(self, dt)
         for target in self.target_sprites:
             target.set_reached(False)
@@ -216,6 +214,7 @@ class BoxSprite(MapBlock):
         self.image.blit(text_surface, text_rect)
 
     def match_target(self):
+        # print("Matching target Box")
         self.rect = self.target_rect
         self.float_position = [self.rect.x, self.rect.y]
 
@@ -224,6 +223,8 @@ class BoxSprite(MapBlock):
         if self.velocity != (0, 0):
             self.countdown -= dt
 
+        # print(f"dt = {dt}, countdown = {self.countdown}, rect = {
+        #       self.rect}, target = {self.target_rect}")
         if self.countdown <= 0:
             self.countdown = self.speed
             self.match_target()

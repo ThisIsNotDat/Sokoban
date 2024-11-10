@@ -163,7 +163,19 @@ class GamePlay(State):
             container=self.manager.get_root_container(),
             default_selection="A*",
         )
-        self.gAlgorithm.list_item_height = 4
+        self.gMoveLabel = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 580), (192, 48)),
+            text="Move",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gMove = pygame_gui.elements.UISelectionList(
+            relative_rect=pygame.Rect((0, 628), (192, 33*2)),
+            item_list=['Ares Move', 'Box Move'],
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+            default_selection="Ares Move",
+        )
 
     def load_test_paths(self):
         for file in os.listdir(TEST_FOLDER):
@@ -247,11 +259,11 @@ class GamePlay(State):
         while self.next_state is None:
             # Calculate delta time in seconds
             delta_time = clock.tick(DESIRED_FPS) / 1000.0
-            while delta_time - SECOND_PER_FRAME > 0:
-                events = pygame.event.get()
-                # Pass delta time to update method
-                self.update(events, SECOND_PER_FRAME)
-                delta_time -= SECOND_PER_FRAME
+            # while delta_time - SECOND_PER_FRAME >= 0:
+            events = pygame.event.get()
+            # Pass delta time to update method
+            self.update(events, delta_time)
+            # delta_time -= SECOND_PER_FRAME
             if self.refresh:
                 self.map.draw(screen, full=True)
                 self.refresh = False
