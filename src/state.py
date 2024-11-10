@@ -6,7 +6,6 @@ import logging
 import json
 import pygame_gui
 import os
-import signal
 
 from src.map import Map
 from src.settings import DESIRED_FPS, SECOND_PER_FRAME, \
@@ -115,6 +114,11 @@ class GamePlay(State):
             format=format, level=logging.INFO, datefmt="%H:%M:%S")
         self.solving_process = None
         self.file_name = None
+        self.test_paths = []
+        self.current_map = 0
+        self.load_test_paths()
+        self.refresh = False
+        self.solve_state = "unsolved"
         self.gCost = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((0, 0), (192, 48)),
             text=f"Cost: {0:03}",
@@ -133,16 +137,85 @@ class GamePlay(State):
             manager=self.manager,
             container=self.manager.get_root_container(),
         )
-        self.test_paths = []
-        self.current_map = 7
-        self.load_test_paths()
-        self.refresh = False
+        self.gMapLabel = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 164), (192, 48)),
+            text="Choose Map",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gChooseMap = pygame_gui.elements.UISelectionList(
+            relative_rect=pygame.Rect((0, 212), (192, 192)),
+            item_list=[path.split("/")[-1] for path in self.test_paths],
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+            default_selection=self.test_paths[self.current_map].split("/")[-1],
+        )
+        self.gAlgoLabel = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 404), (192, 48)),
+            text="Algorithm",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gAlgorithm = pygame_gui.elements.UISelectionList(
+            relative_rect=pygame.Rect((0, 452), (192, 32*4)),
+            item_list=['DFS', 'BFS', 'A*', 'UCS'],
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+            default_selection="A*",
+        )
+        self.gMoveLabel = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((0, 580), (192, 48)),
+            text="Transition",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gMove = pygame_gui.elements.UISelectionList(
+            relative_rect=pygame.Rect((0, 628), (192, 33*2)),
+            item_list=['Ares', 'Box'],
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+            default_selection="Ares",
+        )
+        self.gSolveButton = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((0, 414), (192, 48)),
+            text="Solve",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gPlayButton = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((0, 704), (96, 48)),
+            text="Play",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gResetButton = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((96, 704), (96, 48)),
+            text="Reset",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gNoSolutionWindow = pygame_gui.elements.UIWindow(
+            pygame.Rect((WIDTH // 2 - 192, HEIGHT // 2 - 50), (384, 100)),
+            self.manager,
+            window_display_title="No Solution Found",
+            object_id="#no_solution_window",
+            resizable=True,
+        )
+        self.gNoSolutionContent = pygame_gui.elements.UITextBox(
+            relative_rect=pygame.Rect((0, 0), (384, 100)),
+            html_text="This map has no solution, please choose another map",
+            manager=self.manager,
+            container=self.gNoSolutionWindow,
+        )
+        self.gNoSolutionWindow.hide()
 
     def load_test_paths(self):
+        temp_list = []
         for file in os.listdir(TEST_FOLDER):
             if file.endswith(".txt"):
-                self.test_paths.append(os.path.join(TEST_FOLDER, file))
+                temp_list.append(os.path.join(TEST_FOLDER, file))
                 print(f"Found test file: {file}")
+        self.test_paths = temp_list
 
     def load_map(self, map_file):
         print("Loading map", map_file)
@@ -155,56 +228,147 @@ class GamePlay(State):
         self.file_name = map_file.split("/")[-1].split(".")[0]
         self.map_file = map_file
         self.refresh = True
+        self.change_solve_state("unsolved")
         print("Loaded map", map_file)
 
-    def update(self, events, dt):
-        super().update(events, dt)
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:  # Start game on Enter
-                    self.next_state = StateList.quitting
-                elif event.key == pygame.K_RETURN:
-                    self.solve_map(self.map_file)
-                elif event.key == pygame.K_RIGHT:
-                    self.change_map((
-                        self.current_map + 1) % len(self.test_paths))
-                elif event.key == pygame.K_LEFT:
-                    self.change_map(
-                        (self.current_map - 1) % len(self.test_paths))
-        if self.solving_process is not None:
-            if self.solving_process.poll() is not None:
-                logging.info("Solving process finished")
-                self.read_solution()
-                self.solving_process = None
-        self.map.update(events, dt)
-        self.gCost.set_text(f"Cost: {self.map.cost:03}")
+    def change_solve_state(self, state):
+        print("Change solve state to", state)
+        self.solve_state = state
+        if self.solve_state == "unsolved":
+            self.gSolveButton.show()
+            self.refresh = True
+            self.gAlgoLabel.hide()
+            self.gAlgorithm.hide()
+            self.gMoveLabel.hide()
+            self.gMove.hide()
+            self.gSolveButton.set_text("Solve")
+            self.gPlayButton.hide()
+            self.gResetButton.hide()
+            # self.gSolveButton.rebuild()
+            # self.gAlgorithm.rebuild()
+            # self.gAlgoLabel.rebuild()
+        elif self.solve_state == "solving":
+            self.gSolveButton.set_text("Solving")
+        elif self.solve_state == "finished":
+            self.refresh = True
+            self.gSolveButton.hide()
+            self.gMoveLabel.show()
+            self.gMove.show()
+            self.gAlgoLabel.show()
+            self.gAlgorithm.show()
+            self.gPlayButton.show()
+            self.gResetButton.show()
+            # self.gSolveButton.rebuild()
+
+    def updateGUI(self):
+        self.gCost.set_text(f"Weight: {self.map.cost:03}")
         self.gStep.set_text(f"Steps: {self.map.steps:03}")
         self.gPush.set_text(f"Push: {self.map.push_weight:03}")
 
+    def toggle_play(self):
+        self.map.toggle_play()
+        if self.map.playing:
+            self.gPlayButton.set_text("Pause")
+        else:
+            self.gPlayButton.set_text("Play")
+
+    def reset(self):
+        self.map.reset()
+        self.gPlayButton.set_text("Play")
+        transition = self.gMove.get_single_selection()
+        algorithm = self.gAlgorithm.get_single_selection()
+        transition = "box" if transition == "Box" else "ares"
+        algorithm = "Astar" if algorithm == "A*" else algorithm
+        self.read_solution(transition, algorithm)
+
+    def process_event(self, event):
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_ESCAPE:  # Start game on Enter
+                self.next_state = StateList.quitting
+            if self.solve_state == "finished":
+                if event.key == pygame.K_r:
+                    # R to reset
+                    self.reset()
+                elif event.key == pygame.K_SPACE:
+                    self.toggle_play()
+        if event.type == pygame.USEREVENT:
+            if event.user_type == pygame_gui.\
+                    UI_SELECTION_LIST_NEW_SELECTION:
+                if event.ui_element == self.gChooseMap:
+                    self.change_map(os.path.join(
+                        TEST_FOLDER, event.text))
+                if event.ui_element == self.gAlgorithm \
+                        or event.ui_element == self.gMove:
+                    self.reset()
+            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == self.gSolveButton:
+                    self.solve_map(self.map_file)
+                if event.ui_element == self.gPlayButton:
+                    self.toggle_play()
+                if event.ui_element == self.gResetButton:
+                    self.reset()
+            if event.user_type == pygame_gui.UI_WINDOW_CLOSE:
+                if event.ui_element == self.gNoSolutionWindow:
+                    self.refresh = True
+
+    def update(self, events, dt):
+        for event in events:
+            self.process_event(event)
+        if self.solving_process is not None:
+            if self.solving_process.poll() is not None:
+                logging.info("Solving process finished")
+                self.solving_process = None
+                self.change_solve_state("finished")
+                self.map.peach.solving = False
+                self.reset()
+        self.map.update(events, dt)
+        self.updateGUI()
+        super().update(events, dt)
+
     def change_map(self, new_map):
-        self.current_map = new_map
+        if isinstance(new_map, int):
+            self.current_map = new_map
+        else:
+            self.current_map = self.test_paths.index(new_map)
         self.load_map(self.test_paths[self.current_map])
         self.kill_solving_process()
 
     def draw(self, screen):
+        if self.refresh:
+            print("Refresh")
+            self.map.draw(screen, full=True)
+            self.refresh = False
         self.map.draw(screen)
         super().draw(screen)
         # pygame.display.set_caption("Sokoban - Visualization")
 
     def solve_map(self, map_file):
-        if self.solving_process is not None:
+        if self.solve_state != "unsolved":
             logging.info("A solving process is running")
             return
+        self.change_solve_state("solving")
         self.map.reset()
+        self.map.peach.solving = True
         logging.info(f"Solving map {map_file}")
         self.solving_process = subprocess.Popen(
-            f'python search.py --input {map_file} --type A*', shell=True)
+            f'python search_all.py --input {map_file}', shell=True)
 
-    def read_solution(self):
-        with open(os.path.join(TEST_FOLDER, f"output/{self.file_name}_ares_Astar.json"), "r") as f:
-            data = json.load(f)
-            self.map.load_moves(data["node"])
-            print("Solution:", data["node"])
+    def read_solution(self, transition, algorithm):
+        print(f"Reading solution {transition} {algorithm}")
+        with open(os.path.join(
+                TEST_FOLDER, f"output/{self.file_name}_{transition}_{algorithm}.json"), "r") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                print("No solution found")
+                self.gNoSolutionWindow.show()
+                return
+            if "node" in data:
+                self.map.load_moves(data["node"])
+                print("Solution:", data["node"])
+            else:
+                print("No solution found")
+                self.gNoSolutionWindow.show()
 
     def loop(self, screen):
         """The main game loop. This is where the game logic is executed."""
@@ -213,14 +377,11 @@ class GamePlay(State):
         while self.next_state is None:
             # Calculate delta time in seconds
             delta_time = clock.tick(DESIRED_FPS) / 1000.0
-            while delta_time - SECOND_PER_FRAME > 0:
-                events = pygame.event.get()
-                # Pass delta time to update method
-                self.update(events, SECOND_PER_FRAME)
-                delta_time -= SECOND_PER_FRAME
-            if self.refresh:
-                self.map.draw(screen, full=True)
-                self.refresh = False
+            # while delta_time - SECOND_PER_FRAME >= 0:
+            events = pygame.event.get()
+            # Pass delta time to update method
+            self.update(events, delta_time)
+            # delta_time -= SECOND_PER_FRAME
             self.draw(screen)
             pygame.display.set_caption(
                 f"Sokoban Visualization - FPS: {clock.get_fps()}")

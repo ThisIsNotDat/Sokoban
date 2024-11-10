@@ -132,6 +132,7 @@ class Map():
         self.load_map_sprites(self.weights)
         self.load_moves(self.moves)
         self.playing = False
+        print("Reset")
 
     def draw(self, screen, full=False):
         if full:
@@ -141,26 +142,23 @@ class Map():
             self.non_water_sprites.draw(screen)
             self.target_sprites.draw(screen)
             self.box_sprites.draw(screen)
-            self.peach.draw(screen)
+
+        self.peach.draw(screen)
+
+    def toggle_play(self):
+        self.playing = not self.playing
+        print(f"Playing: {self.playing}")
 
     def update(self, events, dt):
-        for event in events:
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_r:
-                    self.reset()
-                    print("Reset")
-                elif event.key == pygame.K_SPACE:
-                    self.playing = not self.playing
-                    print(f"Playing: {self.playing}")
-
+        if self.peach is not None and self.peach.solving:
+            self.peach.update(self, dt)
+            return
         if not self.playing:
             return
 
-        if self.peach is not None:
-            if self.peach.pushing:
-                for box in self.box_sprites:
-                    if box.velocity != (0, 0):
-                        box.update(self, dt)
+        for box in self.box_sprites:
+            if box.velocity != (0, 0):
+                box.update(self, dt)
         self.peach.update(self, dt)
         for target in self.target_sprites:
             target.set_reached(False)
@@ -216,6 +214,7 @@ class BoxSprite(MapBlock):
         self.image.blit(text_surface, text_rect)
 
     def match_target(self):
+        # print("Matching target Box")
         self.rect = self.target_rect
         self.float_position = [self.rect.x, self.rect.y]
 
@@ -224,6 +223,8 @@ class BoxSprite(MapBlock):
         if self.velocity != (0, 0):
             self.countdown -= dt
 
+        # print(f"dt = {dt}, countdown = {self.countdown}, rect = {
+        #       self.rect}, target = {self.target_rect}")
         if self.countdown <= 0:
             self.countdown = self.speed
             self.match_target()
@@ -296,6 +297,7 @@ class Peach(pygame.sprite.Sprite):
         self.cost = 0
         self.steps = 0
         self.push_weight = 0
+        self.solving = False
 
     @property
     def name(self):
@@ -312,8 +314,18 @@ class Peach(pygame.sprite.Sprite):
                 self.actions_buffer.append(('left', action.isupper()))
             elif action.lower() == 'r':
                 self.actions_buffer.append(('right', action.isupper()))
+        self.tile_idx = 1
+        self.image = self.tiles.get_tile(self.tile_idx)
 
     def update(self, map, dt):
+        if self.solving:
+            self.animation_dt += dt
+            if self.animation_dt >= self.speed:
+                self.tile_idx = (self.tile_idx + 1) % 12
+                # print(self.tile_idx)
+                self.image = self.tiles.get_tile(self.tile_idx)
+                self.animation_dt = 0
+            return
         if self.velocity:
             self.countdown -= dt
             self.animation_dt += dt
