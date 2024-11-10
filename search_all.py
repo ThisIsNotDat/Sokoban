@@ -13,7 +13,7 @@ if __name__ == '__main__':
     
 
     # call the python file with the given arguments
-    for type in ['DFS', 'BFS', 'A*', 'UCS']:
+    for type in ['A*', 'UCS', 'DFS', 'BFS']:
         for transition in ['ares', 'box']:
             python_file = 'ares_move.py' if transition == 'ares' else 'box_move.py'
             try:
