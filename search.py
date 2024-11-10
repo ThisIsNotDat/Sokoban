@@ -7,7 +7,7 @@ if __name__ == '__main__':
     parser.add_argument('--transition', help='transition type', choices=['ares', 'box'], default='ares')
     parser.add_argument('--type', help='type of search', choices=['DFS', 'BFS', 'A*', 'UCS'], required=True)
     parser.add_argument('--output', help='output file', required=False, default=None)
-    parser.add_argument('--timeout', help='timeout', required=False, default=30, type=int)
+    parser.add_argument('--timeout', help='timeout', required=False, default=10 * 60, type=int)
     args = parser.parse_args()
     # call ares_move.py or box_move.py based on the transition type
     output  = args.output
