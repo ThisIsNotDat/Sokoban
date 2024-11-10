@@ -132,10 +132,10 @@ class Map():
         self.load_map_sprites(self.weights)
         self.load_moves(self.moves)
         self.playing = False
+        print("Reset")
 
     def draw(self, screen, full=False):
         if full:
-            print("Fill screen")
             screen.fill((0, 0, 0))
             self.map_sprites.draw(screen)
         else:
@@ -145,16 +145,11 @@ class Map():
 
         self.peach.draw(screen)
 
-    def update(self, events, dt):
-        for event in events:
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_r:
-                    self.reset()
-                    print("Reset")
-                elif event.key == pygame.K_SPACE:
-                    self.playing = not self.playing
-                    print(f"Playing: {self.playing}")
+    def toggle_play(self):
+        self.playing = not self.playing
+        print(f"Playing: {self.playing}")
 
+    def update(self, events, dt):
         if not self.playing:
             return
 

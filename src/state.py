@@ -166,20 +166,32 @@ class GamePlay(State):
         )
         self.gMoveLabel = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((0, 580), (192, 48)),
-            text="Move",
+            text="Transition",
             manager=self.manager,
             container=self.manager.get_root_container(),
         )
         self.gMove = pygame_gui.elements.UISelectionList(
             relative_rect=pygame.Rect((0, 628), (192, 33*2)),
-            item_list=['Ares Move', 'Box Move'],
+            item_list=['Ares', 'Box'],
             manager=self.manager,
             container=self.manager.get_root_container(),
-            default_selection="Ares Move",
+            default_selection="Ares",
         )
         self.gSolveButton = pygame_gui.elements.UIButton(
             relative_rect=pygame.Rect((0, 414), (192, 48)),
             text="Solve",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gPlayButton = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((0, 704), (96, 48)),
+            text="Play",
+            manager=self.manager,
+            container=self.manager.get_root_container(),
+        )
+        self.gResetButton = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect((96, 704), (96, 48)),
+            text="Reset",
             manager=self.manager,
             container=self.manager.get_root_container(),
         )
@@ -216,6 +228,8 @@ class GamePlay(State):
             self.gMove.hide()
             self.gSolveButton.set_text("Solve")
             self.gSolveButton.rebuild()
+            self.gPlayButton.hide()
+            self.gResetButton.hide()
             # self.gSolveButton.rebuild()
             # self.gAlgorithm.rebuild()
             # self.gAlgoLabel.rebuild()
@@ -229,7 +243,9 @@ class GamePlay(State):
             self.gMove.show()
             self.gAlgoLabel.show()
             self.gAlgorithm.show()
-            self.gSolveButton.rebuild()
+            self.gPlayButton.show()
+            self.gResetButton.show()
+            # self.gSolveButton.rebuild()
 
     def updateGUI(self):
         self.gCost.set_text(f"Cost: {self.map.cost:03}")
@@ -238,17 +254,28 @@ class GamePlay(State):
 
     def update(self, events, dt):
         for event in events:
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYUP:
                 if event.key == pygame.K_ESCAPE:  # Start game on Enter
                     self.next_state = StateList.quitting
+                if self.solve_state == "finished":
+                    if event.key == pygame.K_r:
+                        # R to reset
+                        self.map.reset()
+                    elif event.key == pygame.K_SPACE:
+                        self.map.toggle_play()
             if event.type == pygame.USEREVENT:
                 if event.user_type == pygame_gui.\
                         UI_SELECTION_LIST_NEW_SELECTION:
-                    self.change_map(os.path.join(
-                        TEST_FOLDER, self.gChooseMap.get_single_selection()))
+                    if event.ui_element == self.gChooseMap:
+                        self.change_map(os.path.join(
+                            TEST_FOLDER, event.text))
                 if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                     if event.ui_element == self.gSolveButton:
                         self.solve_map(self.map_file)
+                    if event.ui_element == self.gPlayButton:
+                        self.map.toggle_play()
+                    if event.ui_element == self.gResetButton:
+                        self.map.reset()
         if self.solving_process is not None:
             if self.solving_process.poll() is not None:
                 logging.info("Solving process finished")
