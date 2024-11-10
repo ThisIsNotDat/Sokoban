@@ -6,7 +6,6 @@ import logging
 import json
 import pygame_gui
 import os
-import signal
 
 from src.map import Map
 from src.settings import DESIRED_FPS, SECOND_PER_FRAME, \
@@ -116,7 +115,7 @@ class GamePlay(State):
         self.solving_process = None
         self.file_name = None
         self.test_paths = []
-        self.current_map = 7
+        self.current_map = 0
         self.load_test_paths()
         self.refresh = False
         self.solve_state = "unsolved"
@@ -197,10 +196,18 @@ class GamePlay(State):
         )
 
     def load_test_paths(self):
+        temp_list = []
         for file in os.listdir(TEST_FOLDER):
             if file.endswith(".txt"):
-                self.test_paths.append(os.path.join(TEST_FOLDER, file))
+                temp_list.append(os.path.join(TEST_FOLDER, file))
                 print(f"Found test file: {file}")
+
+        for path in temp_list:
+            if path.split("/")[-1].startswith("game"):
+                self.test_paths.append(path)
+        for path in temp_list:
+            if not path.split("/")[-1].startswith("game"):
+                self.test_paths.append(path)
 
     def load_map(self, map_file):
         print("Loading map", map_file)
@@ -323,7 +330,7 @@ class GamePlay(State):
         self.map.reset()
         logging.info(f"Solving map {map_file}")
         self.solving_process = subprocess.Popen(
-            f'python search.py --input {map_file} --type A*', shell=True)
+            f'python search_all.py --input {map_file}', shell=True)
 
     def read_solution(self):
         with open(os.path.join(TEST_FOLDER, f"output/{self.file_name}_ares_Astar.json"), "r") as f:
